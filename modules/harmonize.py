@@ -206,7 +206,7 @@ def harmonize(
     _write_or_append_to_file(output_unaligned, unaligned)
     end = datetime.now()
     total = end - start_original
-    print(f"Completed alignment for {gwas_results} chr{chromosome} in {total}\n")
+    print(f"\nCompleted alignment for {gwas_results} chr{chromosome} in {total}\n")
 
 
 def _write_or_append_to_file(file_path: Path, data: pl.DataFrame) -> None:

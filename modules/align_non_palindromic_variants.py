@@ -191,11 +191,11 @@ def harmonize(
     )
 
     print(
-        f"Total aligned non-palindromic variants with method 'transcribed_match':{inverse.aligned_and_merged.shape[0]} transcribed_match"
+        f"Total aligned non-palindromic variants with method 'transcribed_match': {stacked_pl.filter(pl.col('Alignment_Method') == 'transcribed_match').shape[0]}"
     )
 
     print(
-        f"Total aligned non-palindromic variants with method 'inverse_match':{inverse.aligned_and_merged.shape[0]}"
+        f"Total aligned non-palindromic variants with method 'inverse_match':{stacked_pl.filter(pl.col('Alignment_Method') == 'transcribed_flipped_match').shape[0]}"
     )
     return stacked_pl
 
