@@ -1,4 +1,4 @@
-name: gwas_qc
+name: gwasqc
 channels:
   - bioconda
   - conda-forge

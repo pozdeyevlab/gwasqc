@@ -95,7 +95,7 @@ def read_reference(
     gnomad_end = datetime.now()
     total = gnomad_end - gnomad_get_start
     print(
-        f"Finished searching and filtering gnomAD reference in {total}:\n{datetime.now()}\n"
+        f"\nFinished searching and filtering gnomAD reference in {total}:\n{datetime.now()}\n"
     )
     return gnomad_pl
 

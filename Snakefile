@@ -81,7 +81,6 @@ map_df: pd.DataFrame = pd.read_csv(map_file, sep='\t')
 for index, row in map_df.iterrows():
     unique_id = f"{row['BIOBANK']}_{row['PHENOTYPE']}_{row['SEX']}_{row['ANCESTRY']}"
     #chroms = find_chromosomes(row['PATH'], row['CHROM'], row['GWAS_SOFTWARE'])
-    #chroms = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22]
     chroms = [21]
     plots[unique_id] = Plots(aligned_files = [f"{output_tsv}/{unique_id}/{chrom}_{unique_id}_aligned_to_gnomad.tsv" for chrom in chroms],
                             pval_col = row['PVAL'],
@@ -218,7 +217,7 @@ rule filter_and_harmonize:
         "--impute {params.impute_col} "
         "--n-case {params.case_n_col} "
         "--n-control {params.control_n_col} "
-        "--n-total {params.total_n_col} &> {log}"
+        "--n-total {params.total_n_col}"#" &> {log}"
     
 for plot in plots:
     rule:

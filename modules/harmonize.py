@@ -75,25 +75,25 @@ def harmonize(
 ) -> None:
     """
     :param gwas_results: Input path to regenie or saige summary stats
-    :param gwas_software: Define if regenie or saige was used to generate summary stats
+    :param gwas_software: Define if 'regenie' or 'saige' was used to generate summary stats
     :param output_file: Where plots will be written
     :param sex: Sex if any
-    :param chromosome: The chromosome to look at
-    :param ancestry: Three letter ancestry code if any
-    :param gnomad_ref_dir: Path to gnomAD reference file
-    :param chrom: Column name of chromosome
-    :param position: Column name of genomic position
-    :param ea: Column name of effect allele
-    :param non_ea: Column name of non-effect allele
-    :param eaf: Column name of effect allele frequency
-    :param beta: Column name of beta
-    :param se: Column name of standard error
-    :param n_case: Column name of case N
-    :param n_control: Column name of control N
-    :param n_total: Column name of total N
-    :param impute: Column name of imputation value (if available)
-    :param pval: Column name of p-value
-    :param variant_id: Column name of variant if (Marker or ID)
+    :param chromosome: The chromosome to align
+    :param ancestry: Three letter ancestry code if any (EUR, FIN, AFR, etc)
+    :param gnomad_ref_dir: Path to gnomAD reference files
+    :param chrom: Column name of chromosome in summary stat
+    :param position: Column name of genomic position in summary stat
+    :param ea: Column name of effect allele in summary stat
+    :param non_ea: Column name of non-effect allele in summary stat
+    :param eaf: Column name of effect allele frequency in summary stat
+    :param beta: Column name of beta in summary stat
+    :param se: Column name of standard error in summary stat
+    :param n_case: Column name of case N in summary stat
+    :param n_control: Column name of control N in summary stat
+    :param n_total: Column name of total N in summary stat
+    :param impute: Column name of imputation value (if available) in summary stat
+    :param pval: Column name of p-value in summary stat
+    :param variant_id: Column name of variant id (if any, cannot be rsids) in summary stat
     :param output_unaligned: Path to file for unaligned variants
 
     """
@@ -124,7 +124,7 @@ def harmonize(
     gwas_pl: pl.DataFrame = gwas_results_class.summary_stats
     col_map: filter_gwas.Columns = gwas_results_class.column_map
 
-    print(f"Starting harmonization for chr{chromosome}:\n{datetime.now()}\n")
+    print(f"\nStarting harmonization for chr{chromosome}:")
 
     # Based on chromosome, read in the corresponding gnomad reference and find appropriate AN and AF columns
 
@@ -161,7 +161,7 @@ def harmonize(
     # Number of varinats in gwas with matching position in gnomad
     chr_possible = gwas_pl.shape[0]
     print(
-        f"{chr_possible}/{total_variants} Variants in the gwas summary file {gwas_results} have matching positions in the reference file {gnomad_tsv}"
+        f"Alignment:\n{chr_possible}/{total_variants} Variants in the gwas summary file {gwas_results} have matching positions in the reference file {gnomad_tsv}"
     )
 
     #################################### Start Alignment Logic #####################################
@@ -183,11 +183,21 @@ def harmonize(
     )
     # Re-order stacked_pl so that is is easier to read
     reorder = []
-    first = ['CHR', 'POS', 'REF', 'ALT', 'AF', col_map.eaf, 'Aligned_AF', 'Aligned_Beta', 'Alignment_Method']
+    first = [
+        "CHR",
+        "POS",
+        "REF",
+        "ALT",
+        "AF",
+        col_map.eaf,
+        "Aligned_AF",
+        "Aligned_Beta",
+        "Alignment_Method",
+    ]
     reorder.extend(first)
     [reorder.append(x) for x in stacked_pl.columns if x not in first]
     stacked_pl = stacked_pl.select(reorder)
-    
+
     # Make unaligned
     unaligned = gwas_pl.filter(
         ~(pl.col(col_map.variant_id).is_in(stacked_pl[col_map.variant_id]))

@@ -53,13 +53,8 @@ def plot(
 
     # Filter aligned variants for all possible qc values
     filtered_pl = combined_df.filter(
-        (pl.col("beta_gt_threshold") == False)
-        & (pl.col("pval_is_zero") == False)
-        & (pl.col("FILTER") == "PASS")
-        & (pl.col("beta_lt_threshold") == False)
+        (pl.col("FILTER") == "PASS")
         & (pl.col("palindromic_af_flag") == False)
-        & (pl.col("se_gt_threshold") == False)
-        & (pl.col("se_lt_threshold") == False)
     )
 
     # Prepare data for palindromic and filter scatterplots
@@ -150,7 +145,7 @@ def plot(
     # QC filters applied
     axes[1, 1].scatter(ref_eaf_filtered, study_eaf_filtered, s=10)
     axes[1, 1].set_title(
-        f"All QC Filters\nN:{len(ref_eaf_filtered)}",
+        f"gnomAD QC Filter Applied\nN:{len(ref_eaf_filtered)}",
         fontsize=10,
     )
     axes[1, 1].set_xlabel("gnomad EAF", fontsize=10)

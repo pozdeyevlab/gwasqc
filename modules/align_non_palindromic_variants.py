@@ -16,13 +16,13 @@ In order to avoid OOM errors this module uses set comparison to determine matche
 """
 from collections import namedtuple
 from typing import List, Optional
-
+import sys
 import attr
 import defopt
 import numpy as np
 import polars as pl
 
-from modules import filter_gwas
+import filter_gwas
 
 # pylint: disable=C0301
 # pylint: disable=R0914 # too many local variables
@@ -59,8 +59,7 @@ def harmonize(
 
     matches_count = new.filter(pl.col("ID").is_in(pl.col("Flipped_Allele_ID")))
 
-    print(f"\nTotal Complementary Non-Palindromic Variants: {matches_count.shape[0]}")
-
+    print(f"Non-Palindromic Summary:\nTotal complementary non-palindromic variants: {matches_count.shape[0]}")
     ################################ Start of Alignment ################################
     list_of_results: List[AlignmentResults] = []
     # Exact match (ref=ref & alt=alt)
@@ -105,22 +104,8 @@ def harmonize(
         inverse.aligned_and_merged = results.inverse
         list_of_results.append(exact)
         list_of_results.append(inverse)
-
-        print(
-            f"{exact.aligned_and_merged.shape[0]} variants align to the reference via exact_match (after handling complementary variants)"
-        )
-
-        print(
-            f"{inverse.aligned_and_merged.shape[0]} variants align to the reference via inverse_match (after handling complementary variants)"
-        )
     else:
         list_of_results.append(exact)
-        print(
-            f"{exact.aligned_and_merged.shape[0]} variants align to the reference via exact_match (after handling complementary variants)"
-        )
-        print(
-            f"{inverse.aligned_and_merged.shape[0]} variants align to the reference via inverse_match (after handling complementary variants)"
-        )
 
     # Transcribed exact (ref = transcribed(ref) alt = transcribed(alt))
     gwas_pl = _make_id_column(
@@ -195,6 +180,22 @@ def harmonize(
     # Write Abs(AF_study - AF_ref)
     stacked_pl = stacked_pl.with_columns(
         (abs(pl.col("AF") - pl.col("Aligned_AF"))).alias("ABS_DIF_AF")
+    )
+    # Print Summary
+    print(
+        f"Total aligned non-palindromic variants with method 'exact_match': {stacked_pl.filter(pl.col('Alignment_Method') == 'exact_match').shape[0]}"
+    )
+
+    print(
+        f"Total aligned non-palindromic variants with method 'inverse_match':{stacked_pl.filter(pl.col('Alignment_Method') == 'inverse_match').shape[0]}"
+    )
+
+    print(
+        f"Total aligned non-palindromic variants with method 'transcribed_match':{inverse.aligned_and_merged.shape[0]} transcribed_match"
+    )
+
+    print(
+        f"Total aligned non-palindromic variants with method 'inverse_match':{inverse.aligned_and_merged.shape[0]}"
     )
     return stacked_pl
 
@@ -308,7 +309,6 @@ def handle_complementary_variants(
     inverse_pl_subset = inverse_pl.with_columns(
         ABS_DIF_AF=abs((pl.col("AF") - (1 - pl.col(col_map.eaf))))
     ).select(col_map.variant_id, col_map.eaf, "ABS_DIF_AF", "AF", "REF", "ALT")
-
     joined = (
         exact_pl_subset.join(inverse_pl_subset, on=col_map.variant_id, how="inner")
         .filter((pl.col("ABS_DIF_AF") > pl.col("ABS_DIF_AF_right")))
@@ -316,15 +316,16 @@ def handle_complementary_variants(
     )
 
     print(
-        f"\nNon-Palindromic variants with a lower abs difference in allele frequency (compared to gnomad) when aligned via inverse match vs exact match: {len(joined)}"
+        f"Total aligned non-palindromic complementary variants with method 'inverse_match': {len(joined)}"
     )
 
     # Remove variants from exact match that are more likely to be an inverse match
-    exact_pl = exact_pl.filter(~(pl.col(col_map.variant_id).is_in(joined)))
+    exact_pl = exact_pl.filter(~(pl.col(col_map.variant_id).is_in(joined[col_map.variant_id])))
+ 
     # Propery format inverse.aligned_and_merged
     inverse_pl = inverse_pl.filter(
         (~(pl.col(col_map.variant_id).is_in(exact_pl[col_map.variant_id])))
-        | (pl.col(col_map.variant_id).is_in(joined))
+        | (pl.col(col_map.variant_id).is_in(joined[col_map.variant_id]))
     )
 
     results = namedtuple("results", ["exact", "inverse"])

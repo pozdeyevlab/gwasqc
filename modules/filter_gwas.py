@@ -2,7 +2,7 @@
 Module for reading in GWAS summary stats from either regenie or saige.
 The module completes the following steps:
 1) Creates a column map so that column names of both Regenie and Saige summary stats can be analyzed
-2) Add qc flaggs for the following
+2) Remove variants that meet atleast one of the following
     a) beta > 1e6 or beta < -1e6
     b) se > 1e6 or se < -1e6
     c) p-values equal to 0
@@ -142,30 +142,55 @@ def filter_summary_stats(
     except FileNotFoundError:
         print(f"File '{gwas_results}' not found.")
 
-    # Add flags for filtering criteria
+    # Remove variants that do not meet QC requirements
     # Beta flags 'beta_gt_threshold' & 'beta_lt_threshold'
+    pre_beta = raw_df.shape[0]
     raw_df = greater_than_flag(
         raw_df, found_columns.beta, found_columns.beta_gt_threshold_flag, 1e6
-    )
+    ).filter((pl.col("beta_gt_threshold") == 0)).drop('beta_gt_threshold')
+    gt_count = raw_df.shape[0]
     raw_df = less_than_flag(
         raw_df, found_columns.beta, found_columns.beta_lt_threshold_flag, -1e6
+    ).filter((pl.col("beta_lt_threshold") == 0)).drop('beta_lt_threshold')
+    lt_count = raw_df.shape[0]
+    print('QC Summary:')
+    print(
+        f"{pre_beta-gt_count}: Variants were dropped with beta greater than 1e6\n{pre_beta-lt_count}: Variants were dropped with beta less than -1e6"
     )
 
     # SE flags 'se_gt_threshold' & 'se_lt_threshold'
+    pre_se = raw_df.shape[0]
     raw_df = greater_than_flag(
         raw_df, found_columns.se, found_columns.se_gt_threshold_flag, 1e6
-    )
+    ).filter((pl.col("se_gt_threshold") == 0)).drop('se_gt_threshold')
+    gt_count = raw_df.shape[0]
     raw_df = less_than_flag(
         raw_df, found_columns.se, found_columns.se_lt_threshold_flag, -1e6
+    ).filter((pl.col("se_lt_threshold") == 0)).drop('se_lt_threshold')
+
+    lt_count = raw_df.shape[0]
+    print(
+        f"{pre_se-gt_count}: Variants were dropped with standard error greater than 1e6\n{pre_se-lt_count}: Variants were dropped with standard error less than -1e6"
     )
 
     # Flag p-values equal to 0
-    raw_df = equal_to_flag(raw_df, found_columns.pval, found_columns.pval_flag, 0)
+    pre_pval = raw_df.shape[0]
+    raw_df = equal_to_flag(raw_df, found_columns.pval, found_columns.pval_flag, 0).filter((pl.col('pval_is_zero')==False)).drop('pval_is_zero')
+    pval_count = raw_df.shape[0]
+    print(
+        f"{pre_pval-pval_count}: Variants were dropped with p-value equal to 0"
+    )
 
-    # Flag imputation less than 0.3
+    # Remove variants with imputation less than 0.3
+    pre_impute = raw_df.shape[0]
     raw_df = less_than_flag(
         raw_df, found_columns.imputation, found_columns.impute_flag, 0.3
+    ).filter(pl.col('imputation_lt_threshold')==0).drop('imputation_lt_threshold')
+    impute_count = raw_df.shape[0]
+    print(
+        f"{pre_impute-impute_count}: Variants were dropped with imputation value less than 0.3"
     )
+    
 
     # Check that an ID column exists, if not add one
     if found_columns.variant_id is None:
@@ -198,13 +223,11 @@ def filter_summary_stats(
         .alias(found_columns.variant_id)
     )
 
-    if "biome" in gwas_results.name.lower():
-        # Write unusable variants
-        raw_df.filter(pl.col(found_columns.variant_id).str.contains(">")).write_csv(
-            unusable_path, separator="\t", include_header=True
-        )
-
-        raw_df = raw_df.filter(~pl.col(found_columns.variant_id).str.contains(">"))
+    # Write unusable variants
+    raw_df.filter(pl.col(found_columns.variant_id).str.contains(">")).write_csv(
+        unusable_path, separator="\t", include_header=True
+    )
+    raw_df = raw_df.filter(~pl.col(found_columns.variant_id).str.contains(">"))
 
     raw_df.filter(
         (pl.col(found_columns.effect_allele).str.contains("N"))
@@ -218,7 +241,7 @@ def filter_summary_stats(
             | (pl.col(found_columns.non_effect_allele).str.contains("-"))
         )
     )
-    print(raw_df)
+
     # Extract effect and non-effect allele from ID based on position
     raw_df = raw_df.with_columns(
         pl.col(found_columns.variant_id)
@@ -312,7 +335,7 @@ def filter_summary_stats(
     final_results: Results = Results(summary_stats=raw_df, column_map=found_columns)
     filter_end = datetime.now()
     total = filter_end - filter_start
-    print(f"Column Map for chr{chromosome}:\n{found_columns}\n")
+    print(f"\nColumn Map for chr{chromosome}:\n{found_columns}\n")
     print(f"Completed reading and filtering {gwas_results} chr{chromosome} in {total}")
 
     return final_results
@@ -375,11 +398,12 @@ def greater_than_flag(
     if column_name is not None:
         return polars_df.with_columns(
             pl.when(pl.col(column_name) > threshold)
-            .then(True)
-            .otherwise(False)
+            .then(1)
+            .otherwise(0)
             .alias(new_column_name)
         )
-    return polars_df.with_columns(pl.lit(None).cast(pl.Int64()).alias(new_column_name))
+    else:
+        return polars_df.with_columns(pl.lit(0).alias(new_column_name))
 
 
 def less_than_flag(
@@ -400,11 +424,12 @@ def less_than_flag(
     if column_name is not None:
         return polars_df.with_columns(
             pl.when(pl.col(column_name) < threshold)
-            .then(True)
-            .otherwise(False)
+            .then(1)
+            .otherwise(0)
             .alias(new_column_name)
         )
-    return polars_df.with_columns(pl.lit(None).cast(pl.Int64()).alias(new_column_name))
+    else:
+        return polars_df.with_columns(pl.lit(0).alias(new_column_name))
 
 
 def equal_to_flag(
@@ -429,7 +454,8 @@ def equal_to_flag(
             .otherwise(False)
             .alias(new_column_name)
         )
-    return polars_df.with_columns(pl.lit(None).cast(pl.Int64()).alias(new_column_name))
+    else:
+        return polars_df.with_columns(pl.lit(None).cast(pl.Int64()).alias(new_column_name))
 
 
 def _search_header_for_positions(col_name: str) -> Optional[str]:
