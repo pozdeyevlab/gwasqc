@@ -30,14 +30,7 @@ def plot(
     columns_to_read = [
         "Aligned_AF",
         "AF",
-        "palindromic_af_flag",
         "gwas_is_palindromic",
-        "beta_gt_threshold",
-        "beta_lt_threshold",
-        "se_gt_threshold",
-        "se_lt_threshold",
-        "pval_is_zero",
-        "imputation_lt_threshold",
         "FILTER",
         "Alignment_Method",
         "ABS_DIF_AF",
@@ -45,6 +38,8 @@ def plot(
         "POS",
         "REF",
         "ALT",
+        "outlier",
+        "mahalanobis"
     ]
 
     # Read specific columns from all files into a single polars DF
@@ -52,9 +47,8 @@ def plot(
     combined_df = _read_specific_columns(file_paths, columns_to_read, gnomad_flag_dir)
 
     # Filter aligned variants for all possible qc values
-    filtered_pl = combined_df.filter(
+    combined_df = combined_df.filter(
         (pl.col("FILTER") == "PASS")
-        & (pl.col("palindromic_af_flag") == False)
     )
 
     # Prepare data for palindromic and filter scatterplots
@@ -64,64 +58,57 @@ def plot(
     ref_eaf_palindromic = combined_df.filter(pl.col("gwas_is_palindromic") == True)[
         "AF"
     ]
-    ref_eaf_filtered = filtered_pl["AF"]
-    study_eaf_filtered = filtered_pl["Aligned_AF"]
 
     # Set up scatterplot figure
-    figure, axes = plt.subplots(nrows=4, ncols=2, figsize=(40, 40))
+    figure, axes = plt.subplots(nrows=3, ncols=2, figsize=(40, 40))
 
-    # Plot by alignment method, palindromic & non plalindromic
+    # Palindromic vs Non-Palindromic
     alignment_methods = combined_df["Alignment_Method"].unique()
+    palindrome = combined_df["gwas_is_palindromic"].unique()
 
-    # Non-Palindromic
     for alignment_method in alignment_methods:
         # Scatterplots
         axes[0, 0].scatter(
             combined_df.filter(
                 (pl.col("Alignment_Method") == alignment_method)
-                & (pl.col("gwas_is_palindromic") == False)
             )["AF"],
             combined_df.filter(
                 (pl.col("Alignment_Method") == alignment_method)
-                & (pl.col("gwas_is_palindromic") == False)
             )["Aligned_AF"],
             label=alignment_method.replace("_", " "),
             s=10,
         )
 
     axes[0, 0].set_title(
-        f"Non-Palindromic Alignment Method\nN:{len(ref_eaf_non_palindromic)}",
-        fontsize=10,
+        f"Alignment Methods Palindromic & Non-Palindromic\nN:{combined_df.shape[0]}",
+        fontsize=20,
     )
-    axes[0, 0].set_xlabel("gnomad EAF", fontsize=10)
-    axes[0, 0].set_ylabel("study EAF", fontsize=10)
+    axes[0, 0].set_xlabel("gnomad EAF", fontsize=15)
+    axes[0, 0].set_ylabel("study EAF", fontsize=15)
     axes[0, 0].legend(loc="upper right")
 
-    # Palindromic
-    for alignment_method in alignment_methods:
+    # Palindromic vs Non-Palindromic
+    for pal in palindrome:
         # Scatterplots
         axes[0, 1].scatter(
             combined_df.filter(
-                (pl.col("Alignment_Method") == alignment_method)
-                & (pl.col("gwas_is_palindromic") == True)
+                (pl.col("gwas_is_palindromic") == pal)
             )["AF"],
             combined_df.filter(
-                (pl.col("Alignment_Method") == alignment_method)
-                & (pl.col("gwas_is_palindromic"))
-                == True
+                (pl.col("gwas_is_palindromic") == pal)
             )["Aligned_AF"],
-            label=alignment_method.replace("_", " "),
+            label=pal,
             s=10,
         )
 
     axes[0, 1].set_title(
-        f"Palindromic Alignment Method\nN:{len(ref_eaf_palindromic)}", fontsize=10
+        f"Palindromic vs Non Palindromic\nN:{combined_df.shape[0]}", fontsize=20
     )
-    axes[0, 1].set_xlabel("gnomad EAF", fontsize=10)
-    axes[0, 1].set_ylabel("study EAF", fontsize=10)
+    axes[0, 1].set_xlabel("gnomad EAF", fontsize=15)
+    axes[0, 1].set_ylabel("study EAF", fontsize=15)
     axes[0, 1].legend(loc="upper right")
 
-    # Remove variants that are QC flagged in gnomad
+    # AN gnomAD Filter
     axes[1, 0].scatter(
         combined_df.filter(pl.col("AN_Flag") == 0)["AF"],
         combined_df.filter(pl.col("AN_Flag") == 0)["Aligned_AF"],
@@ -135,131 +122,50 @@ def plot(
         s=10,
     )
     axes[1, 0].set_title(
-        f"AN Filter based on GnomAD Warning\nFlagged:{len(combined_df.filter(pl.col('AN_Flag') == 1)['AF'])}",
-        fontsize=10,
+        f"AN Filter Based On GnomAD Warning\nFlagged:{len(combined_df.filter(pl.col('AN_Flag') == 1)['AF'])}",
+        fontsize=20,
     )
-    axes[1, 0].set_xlabel("gnomad EAF", fontsize=10)
-    axes[1, 0].set_ylabel("study EAF", fontsize=10)
+    axes[1, 0].set_xlabel("gnomad EAF", fontsize=15)
+    axes[1, 0].set_ylabel("study EAF", fontsize=15)
     axes[1, 0].legend(loc="upper right")
 
-    # QC filters applied
-    axes[1, 1].scatter(ref_eaf_filtered, study_eaf_filtered, s=10)
+    # Mahalanobis Outliers
+    for out in ['Yes', 'No']:
+        # Scatterplots
+        axes[1, 1].scatter(
+            combined_df.filter(
+                (pl.col("outlier") == out)
+            )["AF"],
+            combined_df.filter(
+                (pl.col("outlier") == out)
+            )["Aligned_AF"],
+            label=out,
+            s=10,
+        )
+
     axes[1, 1].set_title(
-        f"gnomAD QC Filter Applied\nN:{len(ref_eaf_filtered)}",
-        fontsize=10,
+        f"Mahalanobis Outliers\nOutliers:{combined_df.filter(outlier='Yes').shape[0]}", fontsize=20
     )
-    axes[1, 1].set_xlabel("gnomad EAF", fontsize=10)
-    axes[1, 1].set_ylabel("study EAF", fontsize=10)
+    axes[1, 1].set_xlabel("gnomad EAF", fontsize=15)
+    axes[1, 1].set_ylabel("study EAF", fontsize=15)
+    axes[1, 1].legend(loc="upper right")
+
+    # Mahalanobis Outliers & AN Filter
+    axes[2, 1].scatter(combined_df.filter((pl.col('outlier') == 'No') & (pl.col("AN_Flag") == 0))["AF"],
+        combined_df.filter((pl.col('outlier') == 'No') & (pl.col("AN_Flag") == 0))["Aligned_AF"], s=10)
+    axes[2, 1].set_title(
+        f"Removing Outliers & gnomAD AN Flaged Variants\nN:{combined_df.filter(pl.col('outlier') == 'No').shape[0]}",
+        fontsize=20,
+    )
+    axes[2, 1].set_xlabel("gnomad EAF", fontsize=15)
+    axes[2, 1].set_ylabel("study EAF", fontsize=15)
 
     # Histogram of AF differences
-    axes[2, 0].hist(combined_df["ABS_DIF_AF"], bins=100, edgecolor="black")
+    axes[2, 0].hist(combined_df["mahalanobis"], bins=100, edgecolor="black")
     axes[2, 0].set_title(
-        "Distribution of\nAbsolute Difference in Allele Frequencies",
-        fontsize=10,
+        "Distribution of\nMahalanobis Distances",
+        fontsize=20,
     )
-
-    # Bin AF differences for bar plot
-    combined_df = combined_df.with_columns(
-        pl.col("ABS_DIF_AF")
-        .cut(
-            [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
-            labels=[
-                "0.0-0.1",
-                "0.1-0.2",
-                "0.2-0.3",
-                "0.3-0.4",
-                "0.4-0.5",
-                "0.5-0.6",
-                "0.6-0.7",
-                "0.7-0.8",
-                "0.8-0.9",
-                "0.9-1.0",
-            ],
-        )
-        .alias("af_chunks")
-    )
-
-    # Group by bins and count occurrences
-    counts = combined_df.group_by("af_chunks").agg(
-        pl.col("af_chunks").count().alias("count")
-    )
-    counts = counts.with_columns(pl.col("af_chunks").cast(pl.Float32))
-    counts = counts.sort("af_chunks")
-
-    # Make bar plot
-    axes[2, 1].bar(counts["af_chunks"].cast(str), counts["count"])
-
-    # Add counts to bars
-    for i, count in enumerate(counts["count"]):
-        axes[2, 1].text(i, count + 0.1, str(count), ha="center", va="bottom")
-
-    axes[2, 1].set_title(
-        "Absolute Difference in Allele Frequencies\n Study vs Reference", fontsize=10
-    )
-
-    # Write x axis ticks
-    axes[2, 1].set_xticks(
-        [0.0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
-        [
-            "0.0-0.1",
-            "0.1-0.2",
-            "0.2-0.3",
-            "0.3-0.4",
-            "0.4-0.5",
-            "0.5-0.6",
-            "0.6-0.7",
-            "0.7-0.8",
-            "0.8-0.9",
-            "0.9-1.0",
-        ],
-        rotation=90,
-        ha="center",
-    )
-
-    axes[2, 1].set_xlabel("Bins", fontsize=10)
-    axes[2, 1].set_ylabel("Count", fontsize=10)
-
-    # Broken down by bin cutoff palindromic and non-palindromic
-    chunks = combined_df["af_chunks"].unique()
-    for chunk in chunks:
-        axes[3, 0].scatter(
-            combined_df.filter(
-                (pl.col("af_chunks") == chunk)
-                & (pl.col("gwas_is_palindromic") == False)
-            )["AF"],
-            combined_df.filter(
-                (pl.col("af_chunks") == chunk)
-                & (pl.col("gwas_is_palindromic") == False)
-            )["Aligned_AF"],
-            label=chunk,
-            s=10,
-        )
-
-    axes[3, 0].set_title(
-        f"Non-Palindromic AF Differences\nN:{len(ref_eaf_non_palindromic)}", fontsize=10
-    )
-    axes[3, 0].set_xlabel("gnomad EAF", fontsize=10)
-    axes[3, 0].set_ylabel("study EAF", fontsize=10)
-    axes[3, 0].legend(loc="upper right")
-
-    for chunk in chunks:
-        axes[3, 1].scatter(
-            combined_df.filter(
-                (pl.col("af_chunks") == chunk) & (pl.col("gwas_is_palindromic") == True)
-            )["AF"],
-            combined_df.filter(
-                (pl.col("af_chunks") == chunk) & (pl.col("gwas_is_palindromic") == True)
-            )["Aligned_AF"],
-            label=chunk,
-            s=10,
-        )
-
-    axes[3, 1].set_title(
-        f"Palindromic AF Differences\nN:{len(ref_eaf_palindromic)}", fontsize=10
-    )
-    axes[3, 1].set_xlabel("gnomad EAF", fontsize=10)
-    axes[3, 1].set_ylabel("study EAF", fontsize=10)
-    axes[3, 1].legend(loc="upper right")
 
     figure.tight_layout()
     plt.savefig(

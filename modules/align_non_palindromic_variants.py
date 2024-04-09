@@ -16,13 +16,13 @@ In order to avoid OOM errors this module uses set comparison to determine matche
 """
 from collections import namedtuple
 from typing import List, Optional
-import sys
 import attr
 import defopt
 import numpy as np
 import polars as pl
 
 import filter_gwas
+import mahalanobis
 
 # pylint: disable=C0301
 # pylint: disable=R0914 # too many local variables
@@ -197,7 +197,12 @@ def harmonize(
     print(
         f"Total aligned non-palindromic variants with method 'inverse_match':{stacked_pl.filter(pl.col('Alignment_Method') == 'transcribed_flipped_match').shape[0]}"
     )
-    return stacked_pl
+
+    outlier_pl = mahalanobis.calculate(aligned_pl=stacked_pl.select(['Aligned_AF', 'AF']))
+    final_pl = pl.concat([stacked_pl, outlier_pl], how='align')
+    print(f'Total aligned non-palindromic varinats with Mahalanobis distance greater than three standard deviations from the mean: {final_pl.filter(outlier="Yes").shape[0]}\n')
+    print(final_pl)
+    return final_pl
 
 
 def _make_id_column(

@@ -10,6 +10,7 @@ import numpy as np
 import polars as pl
 
 import filter_gwas
+import mahalanobis
 
 # pylint: disable=C0301 # line too long
 # pylint: disable=R0914 # too many local variables
@@ -184,9 +185,15 @@ def harmonize(
         .shape[0]
     )
     print(
-        f"Total aligned palindromic varinats a fold change greater than 2 (gnomad_af/gwas_af): {fold_change_count}\n"
+        f"Total aligned palindromic varinats with a fold change greater than 2 (gnomad_af/gwas_af): {fold_change_count}"
     )
-    return stacked_pl
+    outlier_pl = mahalanobis.calculate(aligned_pl=stacked_pl.select(['Aligned_AF', 'AF']))
+    final_pl = pl.concat([stacked_pl, outlier_pl], how='align')
+    print(f'Total aligned non-palindromic varinats with Mahalanobis distance greater than three standard deviations from the mean: {final_pl.filter(outlier="Yes").shape[0]}\n')
+    print(final_pl)
+    final_pl = pl.concat([stacked_pl, outlier_pl], how='align')
+    print(f'Total aligned palindromic varinats with Mahalanobis distance greater than three standard deviations from the mean: {final_pl.filter(outlier="Yes").shape[0]}\n')
+    return final_pl
 
 
 def _make_id_column(
