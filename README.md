@@ -77,10 +77,10 @@ snakemake --cores 10 --configfile config.yaml
 #### Outputs:
 |Output Type|Path|
 |-----------|----|
-|Aligned variants|`<output_path>/<biobank>_<phenotype>_<sex>_<ancestry>_aligned_to_gnomad.tsv`|
-|Un-Aligned variants|`<output_path>/<biobank>_<phenotype>_<sex>_<ancestry>_not_aligned_in_gnomad.tsv`|
-|Variants without a matching reference position|`<output_path>/<biobank>_<phenotype>_<sex>_<ancestry>_no_position_in_gnomad.tsv`|
-|Un-usable variants|`<output_path>/<biobank>_<phenotype>_<sex>_<ancestry>_invalid_variants.tsv`<br/>If alternate allele is invalid ie `CN0` then those variants are removed from analysis|
+|Aligned variants|`<output_path>/results/<biobank>_<phenotype>_<sex>_<ancestry>_aligned_to_gnomad.tsv`|
+|Un-Aligned variants|`<output_path>/results/<biobank>_<phenotype>_<sex>_<ancestry>_not_aligned_in_gnomad.tsv`|
+|Variants without a matching reference position|`<output_path>/results/<biobank>_<phenotype>_<sex>_<ancestry>_no_position_in_gnomad.tsv`|
+|Un-Usable variants|`<output_path>/results/<biobank>_<phenotype>_<sex>_<ancestry>_invalid_variants.tsv`<br/>If alternate allele is invalid ie `CN0` then those variants are removed from analysis|
 |Plots|`<output_path>/plots/<biobank>_<phenotype>_<sex>_<ancestry>.png`<br/>scatterplots, histograms, and bar charts to help decide qc cut-offs|
 
 ## Pipeline Overview
