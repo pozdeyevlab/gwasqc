@@ -6,11 +6,10 @@ from typing import List, Optional
 
 import attr
 import defopt
-import numpy as np
-import polars as pl
-
 import filter_gwas
 import mahalanobis
+import numpy as np
+import polars as pl
 
 # pylint: disable=C0301 # line too long
 # pylint: disable=R0914 # too many local variables
@@ -171,7 +170,8 @@ def harmonize(
                             .otherwise(pl.lit("PASS"))
                         )
                     )
-                ).alias('Potential_Strand_Flip')
+                )
+                .alias("Potential_Strand_Flip")
             )
         )
         .drop(["4_6", "GNOMAD_EAF_FLAG"])
@@ -187,12 +187,18 @@ def harmonize(
     print(
         f"Total aligned palindromic varinats with a fold change greater than 2 (gnomad_af/gwas_af): {fold_change_count}"
     )
-    outlier_pl = mahalanobis.calculate(aligned_pl=stacked_pl.select(['Aligned_AF', 'AF']))
-    final_pl = pl.concat([stacked_pl, outlier_pl], how='align')
-    print(f'Total aligned non-palindromic varinats with Mahalanobis distance greater than three standard deviations from the mean: {final_pl.filter(outlier="Yes").shape[0]}\n')
+    outlier_pl = mahalanobis.calculate(
+        aligned_pl=stacked_pl.select(["Aligned_AF", "AF"])
+    )
+    final_pl = pl.concat([stacked_pl, outlier_pl], how="align")
+    print(
+        f'Total aligned non-palindromic varinats with Mahalanobis distance greater than three standard deviations from the mean: {final_pl.filter(outlier="Yes").shape[0]}\n'
+    )
     print(final_pl)
-    final_pl = pl.concat([stacked_pl, outlier_pl], how='align')
-    print(f'Total aligned palindromic varinats with Mahalanobis distance greater than three standard deviations from the mean: {final_pl.filter(outlier="Yes").shape[0]}\n')
+    final_pl = pl.concat([stacked_pl, outlier_pl], how="align")
+    print(
+        f'Total aligned palindromic varinats with Mahalanobis distance greater than three standard deviations from the mean: {final_pl.filter(outlier="Yes").shape[0]}\n'
+    )
     return final_pl
 
 

@@ -39,7 +39,7 @@ def plot(
         "REF",
         "ALT",
         "outlier",
-        "mahalanobis"
+        "mahalanobis",
     ]
 
     # Read specific columns from all files into a single polars DF
@@ -47,9 +47,7 @@ def plot(
     combined_df = _read_specific_columns(file_paths, columns_to_read, gnomad_flag_dir)
 
     # Filter aligned variants for all possible qc values
-    combined_df = combined_df.filter(
-        (pl.col("FILTER") == "PASS")
-    )
+    combined_df = combined_df.filter((pl.col("FILTER") == "PASS"))
 
     # Prepare data for palindromic and filter scatterplots
     ref_eaf_non_palindromic = combined_df.filter(
@@ -69,12 +67,10 @@ def plot(
     for alignment_method in alignment_methods:
         # Scatterplots
         axes[0, 0].scatter(
-            combined_df.filter(
-                (pl.col("Alignment_Method") == alignment_method)
-            )["AF"],
-            combined_df.filter(
-                (pl.col("Alignment_Method") == alignment_method)
-            )["Aligned_AF"],
+            combined_df.filter((pl.col("Alignment_Method") == alignment_method))["AF"],
+            combined_df.filter((pl.col("Alignment_Method") == alignment_method))[
+                "Aligned_AF"
+            ],
             label=alignment_method.replace("_", " "),
             s=10,
         )
@@ -91,12 +87,8 @@ def plot(
     for pal in palindrome:
         # Scatterplots
         axes[0, 1].scatter(
-            combined_df.filter(
-                (pl.col("gwas_is_palindromic") == pal)
-            )["AF"],
-            combined_df.filter(
-                (pl.col("gwas_is_palindromic") == pal)
-            )["Aligned_AF"],
+            combined_df.filter((pl.col("gwas_is_palindromic") == pal))["AF"],
+            combined_df.filter((pl.col("gwas_is_palindromic") == pal))["Aligned_AF"],
             label=pal,
             s=10,
         )
@@ -130,29 +122,33 @@ def plot(
     axes[1, 0].legend(loc="upper right")
 
     # Mahalanobis Outliers
-    for out in ['Yes', 'No']:
+    for out in ["Yes", "No"]:
         # Scatterplots
         axes[1, 1].scatter(
-            combined_df.filter(
-                (pl.col("outlier") == out)
-            )["AF"],
-            combined_df.filter(
-                (pl.col("outlier") == out)
-            )["Aligned_AF"],
+            combined_df.filter((pl.col("outlier") == out))["AF"],
+            combined_df.filter((pl.col("outlier") == out))["Aligned_AF"],
             label=out,
             s=10,
         )
 
     axes[1, 1].set_title(
-        f"Mahalanobis Outliers\nOutliers:{combined_df.filter(outlier='Yes').shape[0]}", fontsize=20
+        f"Mahalanobis Outliers\nOutliers:{combined_df.filter(outlier='Yes').shape[0]}",
+        fontsize=20,
     )
     axes[1, 1].set_xlabel("gnomad EAF", fontsize=15)
     axes[1, 1].set_ylabel("study EAF", fontsize=15)
     axes[1, 1].legend(loc="upper right")
 
     # Mahalanobis Outliers & AN Filter
-    axes[2, 1].scatter(combined_df.filter((pl.col('outlier') == 'No') & (pl.col("AN_Flag") == 0))["AF"],
-        combined_df.filter((pl.col('outlier') == 'No') & (pl.col("AN_Flag") == 0))["Aligned_AF"], s=10)
+    axes[2, 1].scatter(
+        combined_df.filter((pl.col("outlier") == "No") & (pl.col("AN_Flag") == 0))[
+            "AF"
+        ],
+        combined_df.filter((pl.col("outlier") == "No") & (pl.col("AN_Flag") == 0))[
+            "Aligned_AF"
+        ],
+        s=10,
+    )
     axes[2, 1].set_title(
         f"Removing Outliers & gnomAD AN Flaged Variants\nN:{combined_df.filter(pl.col('outlier') == 'No').shape[0]}",
         fontsize=20,

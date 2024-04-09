@@ -25,8 +25,8 @@ from typing import Optional, Union
 
 import attr
 import defopt
-import polars as pl
 import numpy as np
+import polars as pl
 
 # pylint: disable=R0914, R0913, R0903, C0301
 
@@ -137,7 +137,7 @@ def filter_summary_stats(
                 gwas_results, found_columns, chromosome, sep=" "
             )
         elif gwas_software.lower() == "nan":
-            print('No gwas-software was provided, assuming data is tab separated\n')
+            print("No gwas-software was provided, assuming data is tab separated\n")
             raw_df: pl.DataFrame = read_gwas(
                 gwas_results, found_columns, chromosome, sep="\t"
             )
@@ -151,28 +151,44 @@ def filter_summary_stats(
     # Remove variants that do not meet QC requirements
     # Beta flags 'beta_gt_threshold' & 'beta_lt_threshold'
     pre_beta = raw_df.shape[0]
-    raw_df = greater_than_flag(
-        raw_df, found_columns.beta, found_columns.beta_gt_threshold_flag, 1e6
-    ).filter((pl.col("beta_gt_threshold") == 0)).drop('beta_gt_threshold')
+    raw_df = (
+        greater_than_flag(
+            raw_df, found_columns.beta, found_columns.beta_gt_threshold_flag, 1e6
+        )
+        .filter((pl.col("beta_gt_threshold") == 0))
+        .drop("beta_gt_threshold")
+    )
     gt_count = raw_df.shape[0]
-    raw_df = less_than_flag(
-        raw_df, found_columns.beta, found_columns.beta_lt_threshold_flag, -1e6
-    ).filter((pl.col("beta_lt_threshold") == 0)).drop('beta_lt_threshold')
+    raw_df = (
+        less_than_flag(
+            raw_df, found_columns.beta, found_columns.beta_lt_threshold_flag, -1e6
+        )
+        .filter((pl.col("beta_lt_threshold") == 0))
+        .drop("beta_lt_threshold")
+    )
     lt_count = raw_df.shape[0]
-    print('QC Summary:')
+    print("QC Summary:")
     print(
         f"{pre_beta-gt_count}: Variants were dropped with beta greater than 1e6\n{pre_beta-lt_count}: Variants were dropped with beta less than -1e6"
     )
 
     # SE flags 'se_gt_threshold' & 'se_lt_threshold'
     pre_se = raw_df.shape[0]
-    raw_df = greater_than_flag(
-        raw_df, found_columns.se, found_columns.se_gt_threshold_flag, 1e6
-    ).filter((pl.col("se_gt_threshold") == 0)).drop('se_gt_threshold')
+    raw_df = (
+        greater_than_flag(
+            raw_df, found_columns.se, found_columns.se_gt_threshold_flag, 1e6
+        )
+        .filter((pl.col("se_gt_threshold") == 0))
+        .drop("se_gt_threshold")
+    )
     gt_count = raw_df.shape[0]
-    raw_df = less_than_flag(
-        raw_df, found_columns.se, found_columns.se_lt_threshold_flag, -1e6
-    ).filter((pl.col("se_lt_threshold") == 0)).drop('se_lt_threshold')
+    raw_df = (
+        less_than_flag(
+            raw_df, found_columns.se, found_columns.se_lt_threshold_flag, -1e6
+        )
+        .filter((pl.col("se_lt_threshold") == 0))
+        .drop("se_lt_threshold")
+    )
 
     lt_count = raw_df.shape[0]
     print(
@@ -182,24 +198,27 @@ def filter_summary_stats(
     # Flag p-values equal to 0
     pre_pval = raw_df.shape[0]
     if found_columns.pval is not None:
-        raw_df = equal_to_flag(raw_df, found_columns.pval, found_columns.pval_flag, 0).filter((pl.col   ('pval_is_zero')==False)).drop('pval_is_zero')
-        pval_count = raw_df.shape[0]
-        print(
-            f"{pre_pval-pval_count}: Variants were dropped with p-value equal to 0"
+        raw_df = (
+            equal_to_flag(raw_df, found_columns.pval, found_columns.pval_flag, 0)
+            .filter((pl.col("pval_is_zero") == False))
+            .drop("pval_is_zero")
         )
+        pval_count = raw_df.shape[0]
+        print(f"{pre_pval-pval_count}: Variants were dropped with p-value equal to 0")
     else:
-        print(f'No p-value column was provided, pval: {found_columns.pval}\n')
+        print(f"No p-value column was provided, pval: {found_columns.pval}\n")
 
     # Remove variants with imputation less than 0.3
     pre_impute = raw_df.shape[0]
-    raw_df = less_than_flag(
-        raw_df, found_columns.imputation, found_columns.impute_flag, 0.3
-    ).filter(pl.col('imputation_lt_threshold')==0).drop('imputation_lt_threshold')
+    raw_df = (
+        less_than_flag(raw_df, found_columns.imputation, found_columns.impute_flag, 0.3)
+        .filter(pl.col("imputation_lt_threshold") == 0)
+        .drop("imputation_lt_threshold")
+    )
     impute_count = raw_df.shape[0]
     print(
         f"{pre_impute-impute_count}: Variants were dropped with imputation value less than 0.3"
     )
-    
 
     # Check that an ID column exists, if not add one
     if found_columns.variant_id is None:
@@ -297,7 +316,7 @@ def filter_summary_stats(
         raw_df = raw_df.with_columns(
             pl.when(pl.col("Reported_Alleles_Match_ID"))
             .then(pl.col(found_columns.beta))
-            .otherwise(-1*pl.col(found_columns.beta))
+            .otherwise(-1 * pl.col(found_columns.beta))
             .alias(found_columns.beta)
         )
 
@@ -465,7 +484,9 @@ def equal_to_flag(
             .alias(new_column_name)
         )
     else:
-        return polars_df.with_columns(pl.lit(None).cast(pl.Int64()).alias(new_column_name))
+        return polars_df.with_columns(
+            pl.lit(None).cast(pl.Int64()).alias(new_column_name)
+        )
 
 
 def _search_header_for_positions(col_name: str) -> Optional[str]:

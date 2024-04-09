@@ -1,28 +1,22 @@
 """
 Harmonization module
 This module does the following:
-    1) Calls filter_gwas.filter_summary_stats() to read in the summary stat file as a polars df
-    2) Calls get_gnomad_ref.read_reference() to read in the gnomad reference file as a polars df
-    3) Removes variants that do not have a matching reference position, and writes to <aligned/file_path>_no_position_in_gnomad.tsv
+    1) Calls filter_gwas.filter_summary_stats() to read in the summary stat file as a polars df and apply qc filters
+    2) Calls get_gnomad_ref.read_reference() to read in the gnomad reference file as a polars df searching for ancestry and sex specific data
+    3) Removes variants that do not have a matching reference position, and writes variants to output
     4) Creates the following additional ID columns in the gwas summary df
-    a) Flipped_Allele_ID = chr-pos-effect_allele-non_effect_allele
-    b) Transcribed_ID = chr-pos-transcribed_non_effect-transcribed_effect
-    c) Transcribed_Flipped_ID = chr-pos-transcribed_effect-transcribed_non_effect
-    5) For each of the ID columns created above and the original ID column check if there is a match in the gnomad reference. If there is a match that variant is excluded from further analysis.
-    6) If the gwas variant has a reference match with 'Flipped_Allele_ID' or 'Transcribed_Flipped_ID' the aligned beta becomes (-1 X original beta) and the aligned af becomes (1 - original af)
-    7) For downstream analysis a chi-square test is competed between the Effect-Allele Count/ Total Alleles between gwas and gnomad records.
-    8) Results are concatenated and written to <aligned/file_path>aligned_to_gnomad.tsv
-    9) All unaligned variants are written to <aligned/file_path>un_aligned.tsv
-
-    HANDLING PALINDROMIC VARIANTS
-    Palindromic variants pose an extra challenge when aligning to the reference, for this reason all variants that are palindromic and have an allele frequency between 0.4 and 0.6 are flagged and can be removed at a later point.
+        a) Flipped_Allele_ID = chr-pos-effect_allele-non_effect_allele
+        b) Transcribed_ID = chr-pos-transcribed_non_effect-transcribed_effect
+        c) Transcribed_Flipped_ID = chr-pos-transcribed_effect-transcribed_non_effect
+    5) Call align_palindromic_variants.harmonize() and align_non_palindromic_variants.harmonize() respectively.
+    6) If the gwas variant aligns via inverse match or transcribed flipped match then aligned beta becomes (-1 * original beta) and the aligned af becomes (1 - original af)
+    7) Results are concatenated and written to <aligned/file_path>aligned_to_gnomad.tsv
+    8) All unaligned variants are written to <aligned/file_path>un_aligned.tsv
 """
 
-import sys
-from collections import namedtuple
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import Optional, Union
 
 import align_non_palindromic_variants
 import align_palindromic_variants
@@ -30,7 +24,6 @@ import attr
 import defopt
 import filter_gwas
 import get_gnomad_ref
-import numpy as np
 import polars as pl
 
 # pylint: disable=C0301 # line too long
@@ -198,7 +191,7 @@ def harmonize(
     [reorder.append(x) for x in stacked_pl.columns if x not in first]
     stacked_pl = stacked_pl.select(reorder)
 
-    # Make unaligned
+    # Make unaligned output files
     unaligned = gwas_pl.filter(
         ~(pl.col(col_map.variant_id).is_in(stacked_pl[col_map.variant_id]))
     )
