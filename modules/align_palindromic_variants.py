@@ -83,7 +83,7 @@ def harmonize(
 
     stacked_pl = pl.concat(list_of_dfs, how="diagonal")
 
-    # Calculate Aligned Columns
+    # If needed flip beta and allele frequency
     stacked_pl = stacked_pl.with_columns(
         pl.when(
             (
@@ -92,8 +92,8 @@ def harmonize(
                 )
             )
         )
-        .then(-1 * pl.col(col_map.beta) if pl.col(col_map.beta) is not None else np.NaN)
-        .otherwise(pl.col(col_map.beta))
+        .then(-1 * pl.col(col_map.beta) if col_map.beta is not None else np.NaN)
+        .otherwise(pl.col(col_map.beta) if col_map.beta is not None else np.NaN)
         .alias("Aligned_Beta")
     )
 

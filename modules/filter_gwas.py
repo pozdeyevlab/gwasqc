@@ -26,6 +26,7 @@ from typing import Optional, Union
 import attr
 import defopt
 import polars as pl
+import numpy as np
 
 # pylint: disable=R0914, R0913, R0903, C0301
 
@@ -70,7 +71,7 @@ class Results:
 def filter_summary_stats(
     *,
     gwas_results: Path,
-    gwas_software: str,
+    gwas_software: Optional[str],
     chrom: Optional[str],
     position: Optional[str],
     ea: Optional[str],
@@ -135,6 +136,11 @@ def filter_summary_stats(
             raw_df: pl.DataFrame = read_gwas(
                 gwas_results, found_columns, chromosome, sep=" "
             )
+        elif gwas_software.lower() == "nan":
+            print('No gwas-software was provided, assuming data is tab separated\n')
+            raw_df: pl.DataFrame = read_gwas(
+                gwas_results, found_columns, chromosome, sep="\t"
+            )
         else:
             raise ValueError(
                 f"The provided GWAS software: {gwas_software} is not supported -- available options are regenie or saige\n"
@@ -175,11 +181,14 @@ def filter_summary_stats(
 
     # Flag p-values equal to 0
     pre_pval = raw_df.shape[0]
-    raw_df = equal_to_flag(raw_df, found_columns.pval, found_columns.pval_flag, 0).filter((pl.col('pval_is_zero')==False)).drop('pval_is_zero')
-    pval_count = raw_df.shape[0]
-    print(
-        f"{pre_pval-pval_count}: Variants were dropped with p-value equal to 0"
-    )
+    if found_columns.pval is not None:
+        raw_df = equal_to_flag(raw_df, found_columns.pval, found_columns.pval_flag, 0).filter((pl.col   ('pval_is_zero')==False)).drop('pval_is_zero')
+        pval_count = raw_df.shape[0]
+        print(
+            f"{pre_pval-pval_count}: Variants were dropped with p-value equal to 0"
+        )
+    else:
+        print(f'No p-value column was provided, pval: {found_columns.pval}\n')
 
     # Remove variants with imputation less than 0.3
     pre_impute = raw_df.shape[0]
@@ -283,13 +292,14 @@ def filter_summary_stats(
         .alias(found_columns.eaf)
     )
 
-    # Attempt to fix CCPM Error
-    raw_df = raw_df.with_columns(
-        pl.when(pl.col("Reported_Alleles_Match_ID"))
-        .then(pl.col(found_columns.beta))
-        .otherwise(-1 * pl.col(found_columns.beta))
-        .alias(found_columns.beta)
-    )
+    # Get allele1 and allele2 from SNPID rather than provided columns (originated from CCPM error)
+    if found_columns.beta is not None:
+        raw_df = raw_df.with_columns(
+            pl.when(pl.col("Reported_Alleles_Match_ID"))
+            .then(pl.col(found_columns.beta))
+            .otherwise(-1*pl.col(found_columns.beta))
+            .alias(found_columns.beta)
+        )
 
     found_columns.effect_allele = "Effect_Allele_From_ID"
     found_columns.non_effect_allele = "Non_Effect_Allele_From_ID"

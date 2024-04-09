@@ -254,4 +254,4 @@ for plot in plots:
             "--gnomad-flag-dir {input.gnomad_flag_dir} "
             "--variant-id-col {params.variant_id} "
             "--pval-col {params.pval} "
-            "--manhattan-out {output.manhattan_out}"#" &> {log}"
+            "--manhattan-out {output.manhattan_out} &> {log}"
