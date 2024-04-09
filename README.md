@@ -83,8 +83,7 @@ snakemake --cores 10 --configfile config.yaml
 |Un-Usable variants|`<output_path>/results/<biobank>_<phenotype>_<sex>_<ancestry>_invalid_variants.tsv`<br/>If alternate allele is invalid ie `CN0` then those variants are removed from analysis|
 |Plots|`<output_path>/plots/<biobank>_<phenotype>_<sex>_<ancestry>.png`<br/>scatterplots, histograms, and bar charts to help decide qc cut-offs|
 
-## Pipeline Overview
-#TODO Update to include flipped allele flag, outlier calculation, and 
+## Pipeline Overview 
 1. For each summary stat file per chromosome:
     1. Read the chromosome specific gnomAD reference file into memory, scan only for positions that are present in the gwas summary file. Write variants without a matching position in gnomAD to a scratch file. 
    
