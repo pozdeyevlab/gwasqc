@@ -29,11 +29,7 @@ def calculate(
 ) -> None:
     """
     :param aligned_pl: Data frame with aligned variants
-    :param id_list: List of variants IDS
     """
-    # Convert polars to pandas df
-    # pd_df = aligned_pl.to_pandas()
-    # Convert DataFrame to numpy array
     data_np = aligned_pl.to_numpy()
 
     # Calculate mean and covariance matrix
@@ -48,30 +44,21 @@ def calculate(
         )
         mahalanobis_distances.append(mahalanobis_distance)
 
-    # Now `mahalanobis_distances` contains the Mahalanobis distances for all rows
+    # Add values back to polars df
     aligned_pl = aligned_pl.with_columns(
         pl.Series("mahalanobis", mahalanobis_distances)
     )
 
+    # Calculate outliers based on mean + (3 * std)
     std = aligned_pl.std()
     avg = aligned_pl.mean()
-
     aligned_pl = aligned_pl.with_columns(
         pl.when(pl.col("mahalanobis") > (avg["mahalanobis"] + (3 * std["mahalanobis"])))
         .then(pl.lit("Yes"))
         .otherwise(pl.lit("No"))
         .alias("outlier")
-    )
+    ).with_columns(mahalanobis_mean=avg["mahalanobis"]).with_columns(mahalanobis_stdev=std["mahalanobis"])
     return aligned_pl
-
-
-def calculate_mahalanobis(data=None):
-    y_mu = data - data.mean(axis=0)
-    cov = np.cov(data.values.T)
-    inv_covmat = np.linalg.inv(cov)
-    left = np.dot(y_mu, inv_covmat)
-    mahal = np.dot(left, y_mu.T)
-    return mahal.diagonal()
 
 
 if __name__ == "__main__":

@@ -7,7 +7,6 @@ from typing import List, Optional
 import attr
 import defopt
 import filter_gwas
-import mahalanobis
 import numpy as np
 import polars as pl
 
@@ -187,19 +186,8 @@ def harmonize(
     print(
         f"Total aligned palindromic varinats with a fold change greater than 2 (gnomad_af/gwas_af): {fold_change_count}"
     )
-    outlier_pl = mahalanobis.calculate(
-        aligned_pl=stacked_pl.select(["Aligned_AF", "AF"])
-    )
-    final_pl = pl.concat([stacked_pl, outlier_pl], how="align")
-    print(
-        f'Total aligned non-palindromic varinats with Mahalanobis distance greater than three standard deviations from the mean: {final_pl.filter(outlier="Yes").shape[0]}\n'
-    )
-    print(final_pl)
-    final_pl = pl.concat([stacked_pl, outlier_pl], how="align")
-    print(
-        f'Total aligned palindromic varinats with Mahalanobis distance greater than three standard deviations from the mean: {final_pl.filter(outlier="Yes").shape[0]}\n'
-    )
-    return final_pl
+    
+    return stacked_pl
 
 
 def _make_id_column(

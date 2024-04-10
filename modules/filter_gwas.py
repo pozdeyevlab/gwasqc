@@ -44,11 +44,6 @@ class Columns:
     beta: Optional[str]
     pval: Optional[str]
     variant_id: Optional[str]
-    beta_gt_threshold_flag: Optional[str] = "beta_gt_threshold"
-    beta_lt_threshold_flag: Optional[str] = "beta_lt_threshold"
-    se_gt_threshold_flag: Optional[str] = "se_gt_threshold"
-    se_lt_threshold_flag: Optional[str] = "se_lt_threshold"
-    pval_flag: Optional[str] = "pval_is_zero"
     palindromic_flag: Optional[str] = "gwas_is_palindromic"
     palindromic_af_flag: Optional[str] = "palindromic_af_flag"
     impute_flag: Optional[str] = "imputation_lt_threshold"
@@ -150,77 +145,44 @@ def filter_summary_stats(
 
     # Remove variants that do not meet QC requirements
     # Beta flags 'beta_gt_threshold' & 'beta_lt_threshold'
-    pre_beta = raw_df.shape[0]
-    raw_df = (
-        greater_than_flag(
-            raw_df, found_columns.beta, found_columns.beta_gt_threshold_flag, 1e6
-        )
-        .filter((pl.col("beta_gt_threshold") == 0))
-        .drop("beta_gt_threshold")
-    )
-    gt_count = raw_df.shape[0]
-    raw_df = (
-        less_than_flag(
-            raw_df, found_columns.beta, found_columns.beta_lt_threshold_flag, -1e6
-        )
-        .filter((pl.col("beta_lt_threshold") == 0))
-        .drop("beta_lt_threshold")
-    )
-    lt_count = raw_df.shape[0]
     print("QC Summary:")
-    print(
-        f"{pre_beta-gt_count}: Variants were dropped with beta greater than 1e6\n{pre_beta-lt_count}: Variants were dropped with beta less than -1e6"
+    raw_df = (
+        greater_than_filter(
+            raw_df, found_columns.beta, 'beta', 1e6
+        )
+    )
+
+    raw_df = (
+        less_than_filter(
+            raw_df, found_columns.beta, 'beta', -1e6
+        )
     )
 
     # SE flags 'se_gt_threshold' & 'se_lt_threshold'
-    pre_se = raw_df.shape[0]
     raw_df = (
-        greater_than_flag(
-            raw_df, found_columns.se, found_columns.se_gt_threshold_flag, 1e6
+        greater_than_filter(
+            raw_df, found_columns.se, 'standard error', 1e6
         )
-        .filter((pl.col("se_gt_threshold") == 0))
-        .drop("se_gt_threshold")
-    )
-    gt_count = raw_df.shape[0]
-    raw_df = (
-        less_than_flag(
-            raw_df, found_columns.se, found_columns.se_lt_threshold_flag, -1e6
-        )
-        .filter((pl.col("se_lt_threshold") == 0))
-        .drop("se_lt_threshold")
     )
 
-    lt_count = raw_df.shape[0]
-    print(
-        f"{pre_se-gt_count}: Variants were dropped with standard error greater than 1e6\n{pre_se-lt_count}: Variants were dropped with standard error less than -1e6"
+    raw_df = (
+        less_than_filter(
+            raw_df, found_columns.se, 'standard error', -1e6
+        )
     )
 
     # Flag p-values equal to 0
-    pre_pval = raw_df.shape[0]
     if found_columns.pval is not None:
         raw_df = (
-            equal_to_flag(raw_df, found_columns.pval, found_columns.pval_flag, 0)
-            .filter((pl.col("pval_is_zero") == False))
-            .drop("pval_is_zero")
+            equal_to_flag(raw_df, found_columns.pval, 'pval', 0)
         )
-        pval_count = raw_df.shape[0]
-        print(f"{pre_pval-pval_count}: Variants were dropped with p-value equal to 0")
-    else:
-        print(f"No p-value column was provided, pval: {found_columns.pval}\n")
 
     # Remove variants with imputation less than 0.3
-    pre_impute = raw_df.shape[0]
     raw_df = (
-        less_than_flag(raw_df, found_columns.imputation, found_columns.impute_flag, 0.3)
-        .filter(pl.col("imputation_lt_threshold") == 0)
-        .drop("imputation_lt_threshold")
-    )
-    impute_count = raw_df.shape[0]
-    print(
-        f"{pre_impute-impute_count}: Variants were dropped with imputation value less than 0.3"
+        less_than_filter(raw_df, found_columns.imputation, 'imputation', 0.3)
     )
 
-    # Check that an ID column exists, if not add one
+    # Check that an ID column exists, if not add one named 'MarkerID'
     if found_columns.variant_id is None:
         id_column = (
             raw_df[found_columns.chrom].cast(str).replace("chr", "").replace("23", "X")
@@ -409,84 +371,94 @@ def read_gwas(
     )
 
 
-def greater_than_flag(
+def greater_than_filter(
     polars_df: pl.DataFrame,
     column_name: str,
-    new_column_name: str,
+    test_type: str,
     threshold: Union[float, int],
 ) -> pl.DataFrame:
     """
-    If the column name exists then assert that the value is greater than the provided threshold and return T/F
+    If provided column exists, filter accordingly and return new df otherwise return unfiltered df
 
     Args:
         polars_df: The polars dataframe to analyze
         column_name: The name of the column to compare to the threshold
-        new_column_name: Name of the column to record boolena outcome
+        test_type: Descriptor for column that is being investigated (beta, stder)
         threshold: Float or int to comare values in column to
     """
+    starting_count = polars_df.shape[0]
     if column_name is not None:
-        return polars_df.with_columns(
-            pl.when(pl.col(column_name) > threshold)
-            .then(1)
-            .otherwise(0)
-            .alias(new_column_name)
+        # Only keep records that are less than (filtering out greater than)
+        polars_df = polars_df.filter(
+            pl.col(column_name) < threshold
         )
+        print(
+            f"Found and removed {starting_count-polars_df.shape[0]} variants with {test_type} greater than {threshold}"
+        )
+        return polars_df
     else:
-        return polars_df.with_columns(pl.lit(0).alias(new_column_name))
+        print(f"Atempted to filter for (remove) variants with {test_type} greater than {threshold}\nProvided column name did does not exist, returning un-filtered data frame\n")
+        return polars_df
 
 
-def less_than_flag(
+def less_than_filter(
     polars_df: pl.DataFrame,
     column_name: str,
-    new_column_name: str,
+    test_type: str,
     threshold: Union[float, int],
 ) -> pl.DataFrame:
     """
-    If the column name exists then assert that the value is less than the provided threshold and return T/F
+    If provided column exists, filter accordingly and return new df otherwise return unfiltered df
 
     Args:
         polars_df: The polars dataframe to analyze
         column_name: The name of the column to compare to the threshold
-        new_column_name: Name of the column to record boolena outcome
+        test_type: Descriptor for column that is being investigated (beta, stder)
         threshold: Float or int to comare values in column to
     """
+    starting_count = polars_df.shape[0]
     if column_name is not None:
-        return polars_df.with_columns(
-            pl.when(pl.col(column_name) < threshold)
-            .then(1)
-            .otherwise(0)
-            .alias(new_column_name)
+        # Only keep records that are greater than (filtering out less than)
+        polars_df = polars_df.filter(
+            pl.col(column_name) > threshold
         )
+        print(
+            f"Found and removed {starting_count-polars_df.shape[0]}variants with {test_type} less than {threshold}"
+        )
+        return polars_df
     else:
-        return polars_df.with_columns(pl.lit(0).alias(new_column_name))
+        print(f"Atempted to filter for (remove) variants with {test_type} less than {threshold}\nProvided column name did does not exist, returning un-filtered data frame\n")
+        return polars_df
 
 
 def equal_to_flag(
     polars_df: pl.DataFrame,
     column_name: str,
-    new_column_name: str,
+    test_type: str,
     threshold: Union[float, int],
 ) -> pl.DataFrame:
     """
-    If the column name exists then assert that the value is equal to the provided threshold and return T/F
+    If provided column exists, filter accordingly and return new df otherwise return unfiltered df
 
     Args:
         polars_df: The polars dataframe to analyze
         column_name: The name of the column to compare to the threshold
-        new_column_name: Name of the column to record boolena outcome
+        test_type: Descriptor for test
         threshold: Float or int to comare values in column to
     """
+    starting_count = polars_df.shape[0]
     if column_name is not None:
-        return polars_df.with_columns(
-            pl.when(pl.col(column_name) == threshold)
-            .then(True)
-            .otherwise(False)
-            .alias(new_column_name)
+        # Only keep records that are not equal to threshold than (filtering out equal to)
+        polars_df = polars_df.filter(
+            pl.col(column_name) == threshold
         )
+        print(
+            f"Found and removed {starting_count-polars_df.shape[0]}variants with {test_type} less than {threshold}"
+        )
+        return polars_df
     else:
-        return polars_df.with_columns(
-            pl.lit(None).cast(pl.Int64()).alias(new_column_name)
-        )
+        print(f"Atempted to filter for (remove) variants with {test_type} equal to {threshold}\nProvided column name did does not exist, returning un-filtered data frame\n")
+        return polars_df
 
 
 def _search_header_for_positions(col_name: str) -> Optional[str]:

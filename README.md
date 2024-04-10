@@ -41,6 +41,7 @@ snakemake --cores 10 --configfile config.yaml
 ### Input Files
 
 #### Map file with the following column names (case sensitive):
+Not all fields are necessary at a minimum 'BioBank', 'PHENOTYPE', 'SEX', 'ANCESTRY', 'CHROM', 'POS', 'EFFECT_ALLELE', 'NON_EFFECT_ALLELE', 'EFFECT_AF', and 'PATH' are required.
 |Column Name    |Description     |
 |---------------|----------------|
 |BIOBANK        |name of biobank (must be one word, we apologize for the onconvenience but 'Some_Bank' will yield buggy results instead please use 'SomeBank'!)|
@@ -84,6 +85,7 @@ snakemake --cores 10 --configfile config.yaml
 |Plots|`<output_path>/plots/<biobank>_<phenotype>_<sex>_<ancestry>.png`<br/>scatterplots, histograms, and bar charts to help decide qc cut-offs|
 
 ## Pipeline Overview 
+`modules/harmonize.py` is the main script and is called directly in the Snakefile
 1. For each summary stat file per chromosome:
     1. Read the chromosome specific gnomAD reference file into memory, scan only for positions that are present in the gwas summary file. Write variants without a matching position in gnomAD to a scratch file. 
    

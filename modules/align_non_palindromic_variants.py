@@ -20,7 +20,6 @@ from typing import List, Optional
 import attr
 import defopt
 import filter_gwas
-import mahalanobis
 import numpy as np
 import polars as pl
 
@@ -60,7 +59,7 @@ def harmonize(
     matches_count = new.filter(pl.col("ID").is_in(pl.col("Flipped_Allele_ID")))
 
     print(
-        f"Non-Palindromic Summary:\nTotal complementary non-palindromic variants: {matches_count.shape[0]}"
+        f"\nNon-Palindromic Summary:\nTotal complementary non-palindromic variants: {matches_count.shape[0]}"
     )
     ################################ Start of Alignment ################################
     list_of_results: List[AlignmentResults] = []
@@ -200,15 +199,7 @@ def harmonize(
         f"Total aligned non-palindromic variants with method 'inverse_match':{stacked_pl.filter(pl.col('Alignment_Method') == 'transcribed_flipped_match').shape[0]}"
     )
 
-    outlier_pl = mahalanobis.calculate(
-        aligned_pl=stacked_pl.select(["Aligned_AF", "AF"])
-    )
-    final_pl = pl.concat([stacked_pl, outlier_pl], how="align")
-    print(
-        f'Total aligned non-palindromic varinats with Mahalanobis distance greater than three standard deviations from the mean: {final_pl.filter(outlier="Yes").shape[0]}\n'
-    )
-    print(final_pl)
-    return final_pl
+    return stacked_pl
 
 
 def _make_id_column(
