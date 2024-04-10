@@ -11,6 +11,7 @@ cd gwasqc
 conda env create -f environment.yml
 conda activate gwasqc
 poetry install
+
 # To test correct install try
 python modules/harmonize.py --help
 ```
@@ -40,6 +41,7 @@ snakemake --cores 10 --configfile config.yaml
 ### Input Files
 
 #### Map file with the following column names (case sensitive):
+Not all fields are necessary at a minimum 'BioBank', 'PHENOTYPE', 'SEX', 'ANCESTRY', 'CHROM', 'POS', 'EFFECT_ALLELE', 'NON_EFFECT_ALLELE', 'EFFECT_AF', and 'PATH' are required.
 |Column Name    |Description     |
 |---------------|----------------|
 |BIOBANK        |name of biobank (must be one word, we apologize for the onconvenience but 'Some_Bank' will yield buggy results instead please use 'SomeBank'!)|
@@ -76,14 +78,14 @@ snakemake --cores 10 --configfile config.yaml
 #### Outputs:
 |Output Type|Path|
 |-----------|----|
-|Aligned variants|`<output_path>/<biobank>_<phenotype>_<sex>_<ancestry>_aligned_to_gnomad.tsv`|
-|Un-Aligned variants|`<output_path>/<biobank>_<phenotype>_<sex>_<ancestry>_not_aligned_in_gnomad.tsv`|
-|Variants without a matching reference position|`<output_path>/<biobank>_<phenotype>_<sex>_<ancestry>_no_position_in_gnomad.tsv`|
-|Un-usable variants|`<output_path>/<biobank>_<phenotype>_<sex>_<ancestry>_invalid_variants.tsv`<br/>If alternate allele is invalid ie `CN0` then those variants are removed from analysis|
+|Aligned variants|`<output_path>/results/<biobank>_<phenotype>_<sex>_<ancestry>_aligned_to_gnomad.tsv`|
+|Un-Aligned variants|`<output_path>/results/<biobank>_<phenotype>_<sex>_<ancestry>_not_aligned_in_gnomad.tsv`|
+|Variants without a matching reference position|`<output_path>/results/<biobank>_<phenotype>_<sex>_<ancestry>_no_position_in_gnomad.tsv`|
+|Un-Usable variants|`<output_path>/results/<biobank>_<phenotype>_<sex>_<ancestry>_invalid_variants.tsv`<br/>If alternate allele is invalid ie `CN0` then those variants are removed from analysis|
 |Plots|`<output_path>/plots/<biobank>_<phenotype>_<sex>_<ancestry>.png`<br/>scatterplots, histograms, and bar charts to help decide qc cut-offs|
 
-## Pipeline Overview
-
+## Pipeline Overview 
+`modules/harmonize.py` is the main script and is called directly in the Snakefile
 1. For each summary stat file per chromosome:
     1. Read the chromosome specific gnomAD reference file into memory, scan only for positions that are present in the gwas summary file. Write variants without a matching position in gnomAD to a scratch file. 
    
@@ -91,15 +93,16 @@ snakemake --cores 10 --configfile config.yaml
    
         1. Enforce variant id format <chrom>:<pos>:<non_effect_allele>:<effect_allele>
             1. Variants with missing alleles or structural variants are thrown out.
-        2. Create flags for the following:
+        2. Remove variants if:
             * p-value is 0
             * -1e6 < BETA < 1e6
             * -1e6 < SE < 1e6
             * If imputation data is available, imputation is less than imputation threshold (default: 0.3)
+        3. Create flags for:
             * Variant alleles are palindromic
             * Variant alleles are palindromic and effect allele frequency is between 0.4 - 0.6
             * Effect and non effect alleles match the order found in the variant ID
-    3. Run `modules/align_palindromic_variants.py` on palindromic variants and `modules/align_non_palindromic_variants.py` on non palindromic variants. The reason for this distinction is that palindromic variants are not checked for transcribed matches, as that would be redundant.
+    3. Run `modules/align_palindromic_variants.py` on palindromic variants and `modules/align_non_palindromic_variants.py` on non palindromic variants.
     4. For **non palindromic variants**
         1. Check for an exact match
             * Example: 1:100:A:G & 1:100:A:G
@@ -118,15 +121,15 @@ snakemake --cores 10 --configfile config.yaml
         2. Check for an inverse match 
             * Example: 1:100:T:A & 1:100:A:T
             * **IMPORTANT**: The AF & Beta become 1 - AF & -1 * BETA
-        3. For variants that align BOTH by exact and inverse match, find the absolute difference in allele frequency (AF) between the gnomAD reported AF and the gwas reported AF. The method that procuces the smallest difference in AF is saved as the true match. These counts are saved to the log file. 
+        3. For variants that align BOTH by exact and inverse match, find the absolute difference in allele frequency (AF) between the gnomAD reported AF and the gwas reported AF. The method that procuces the smallest difference in AF is saved as the true match. These counts are saved to the log file.
+        4. Add column 'Potential_Strand_Flip' based on filters used in GBMI flagship paper 
+        [GBMI](https://www.sciencedirect.com/science/article/pii/S2666979X22001410)
+            *'4_6_af'= AF-GWAS < 0.4 and AF-gnomAD > 0.6 OR AF-GWAS > 0.6 and AF-gnomAD < 0.4
+            *'alt_af'=The allele frequency of the alternative allele in the GWAS data set was closer to AF-gnomAD than the reference allele
+            *'fold_change'= The fold difference was greater than two (gwas-af vs gnomad-af)
+            **These flags are not finalized and may change**
+    6. Calculate mahalanobis distances between gwas-af and gnomad-af for each variant, outliers are those that have a mahalanobis distance greater than 3 standard deviations from the mean. **Currently this seems to be filtering common variants with AF > 0.8, this is not finalized**
    
-    5. Write the aligned, unaligned, and missing position variants to three respective output files
+    7. Write the aligned, unaligned, and missing position variants to three respective output files
 
-3) Per input gwas summary stat create the following plots:
-
-       * Scatterplot: colored by alignment method
-       * Scatterplot: colored by palinfromic or not palindromic
-       * Scatterplot: colored by chisq p-val > 0.05 or chisq p-val < 0.05
-       * Scatterplot: Plot of aligned variants with all possible filters applied
-       * Histogram: abs(Study_AF - Reference_AF)
-       * Bar plot: abs(Study_AF - Reference_AF) binned into intervals of 0.01 (0 - 1.0)
+3) Per input gwas summary create allele frequency scatterplots, manhattan, and qq-plots. 

@@ -1,4 +1,4 @@
-map_file: "input.tsv"
+map_file: "map.tsv"
 gnomad_ref_dir: "gnomAD"
 gnomad_flag_dir: "gnomAD"
 output_tsv: "output/results"

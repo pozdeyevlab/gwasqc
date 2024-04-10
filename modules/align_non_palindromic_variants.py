@@ -16,13 +16,12 @@ In order to avoid OOM errors this module uses set comparison to determine matche
 """
 from collections import namedtuple
 from typing import List, Optional
+
 import attr
 import defopt
+import filter_gwas
 import numpy as np
 import polars as pl
-
-import filter_gwas
-import mahalanobis
 
 # pylint: disable=C0301
 # pylint: disable=R0914 # too many local variables
@@ -59,7 +58,9 @@ def harmonize(
 
     matches_count = new.filter(pl.col("ID").is_in(pl.col("Flipped_Allele_ID")))
 
-    print(f"Non-Palindromic Summary:\nTotal complementary non-palindromic variants: {matches_count.shape[0]}")
+    print(
+        f"\nNon-Palindromic Summary:\nTotal complementary non-palindromic variants: {matches_count.shape[0]}"
+    )
     ################################ Start of Alignment ################################
     list_of_results: List[AlignmentResults] = []
     # Exact match (ref=ref & alt=alt)
@@ -198,11 +199,7 @@ def harmonize(
         f"Total aligned non-palindromic variants with method 'inverse_match':{stacked_pl.filter(pl.col('Alignment_Method') == 'transcribed_flipped_match').shape[0]}"
     )
 
-    outlier_pl = mahalanobis.calculate(aligned_pl=stacked_pl.select(['Aligned_AF', 'AF']))
-    final_pl = pl.concat([stacked_pl, outlier_pl], how='align')
-    print(f'Total aligned non-palindromic varinats with Mahalanobis distance greater than three standard deviations from the mean: {final_pl.filter(outlier="Yes").shape[0]}\n')
-    print(final_pl)
-    return final_pl
+    return stacked_pl
 
 
 def _make_id_column(
@@ -325,8 +322,10 @@ def handle_complementary_variants(
     )
 
     # Remove variants from exact match that are more likely to be an inverse match
-    exact_pl = exact_pl.filter(~(pl.col(col_map.variant_id).is_in(joined[col_map.variant_id])))
- 
+    exact_pl = exact_pl.filter(
+        ~(pl.col(col_map.variant_id).is_in(joined[col_map.variant_id]))
+    )
+
     # Propery format inverse.aligned_and_merged
     inverse_pl = inverse_pl.filter(
         (~(pl.col(col_map.variant_id).is_in(exact_pl[col_map.variant_id])))
