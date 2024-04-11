@@ -23,8 +23,8 @@ import align_palindromic_variants
 import attr
 import defopt
 import filter_gwas
-import mahalanobis
 import get_gnomad_ref
+import mahalanobis
 import polars as pl
 
 # pylint: disable=C0301 # line too long
@@ -175,14 +175,6 @@ def harmonize(
     stacked_pl = pl.concat(
         [palindromic_results, non_palindromic_results], how="diagonal"
     )
-    outlier_pl = mahalanobis.calculate(
-        aligned_pl=stacked_pl.select(["Aligned_AF", "AF"])
-    )
-    stacked_pl = pl.concat([stacked_pl, outlier_pl], how="align")
-    print(
-        f'\nMahalanobis Summary:\nTotal aligned varinats with Mahalanobis distance greater than three standard deviations from the mean: {stacked_pl.filter(outlier="Yes").shape[0]}\n'
-    )
-    print(f'Final Aligned Data:\n{stacked_pl}')
 
     # Re-order stacked_pl so that is is easier to read
     reorder = []

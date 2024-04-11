@@ -49,11 +49,22 @@ class Phenotype:
 @attr.s(frozen=True, auto_attribs=True, kw_only=True)
 class Plots:
     """Represents all necessary data for generating plots"""
+    aligned_file: str
+    pval_col: str
+    variant_id_col: str
+    pos_col: str
+    chrom_col: str
+
+
+@attr.s(frozen=True, auto_attribs=True, kw_only=True)
+class Combine:
+    """Represents all necessary data for generating plots"""
     aligned_files: List[str]
     pval_col: str
     variant_id_col: str
     pos_col: str
     chrom_col: str
+
 
 def find_chromosomes(summary_path: Path, chrom_col: str, software: str) -> List[Union[int, str]]:
     """
@@ -74,15 +85,20 @@ def find_chromosomes(summary_path: Path, chrom_col: str, software: str) -> List[
 # Data structures that will be sued in all rule
 phenotypes: Dict[str, Phenotype] = dict()
 plots: Dict[str, Plots] = dict()
+combined: Dict[str, Combine] = dict()
 
 # Read in the map file provided from the config
 map_df: pd.DataFrame = pd.read_csv(map_file, sep='\t')
 
 for index, row in map_df.iterrows():
-    print(row)
     unique_id = f"{row['BIOBANK']}_{row['PHENOTYPE']}_{row['SEX']}_{row['ANCESTRY']}"
     chroms = find_chromosomes(row['PATH'], row['CHROM'], row['GWAS_SOFTWARE'])
-    plots[unique_id] = Plots(aligned_files = [f"{output_tsv}/{unique_id}/{chrom}_{unique_id}_aligned_to_gnomad.tsv" for chrom in chroms],
+    combined[unique_id] = Combine(aligned_files = [f"{output_tsv}/{unique_id}/{chrom}_{unique_id}_aligned_to_gnomad.tsv" for chrom in chroms],
+                            pval_col = row['PVAL'],
+                            pos_col= row["POS"],
+                            chrom_col = row["CHROM"],
+                            variant_id_col = row['ID'])
+    plots[unique_id] = Plots(aligned_file = f"{output_tsv}/{unique_id}/{unique_id}_aligned_results.tsv",
                             pval_col = row['PVAL'],
                             pos_col= row["POS"],
                             chrom_col = row["CHROM"],
@@ -112,7 +128,7 @@ for index, row in map_df.iterrows():
                                         total_n_col = row['Total_N'],
                                         control_n_col = row['Control_N'],
                                         case_n_col = row['Case_N'])
-print(phenotypes)
+print(plots)
 ################################################################################
 # Directives
 ################################################################################
@@ -162,8 +178,9 @@ rule all:
     """
     input:
         [f'{output_tsv}/{value.biobank_id}/{key}_aligned_to_gnomad.tsv' for key, value in phenotypes.items()],
+        set([f'{output_tsv}/{value.biobank_id}/{value.biobank_id}_aligned_results.tsv' for value in phenotypes.values()]),
         set([f'{output_plots}/{value.biobank_id}/{value.biobank_id}_scatter.png' for value in phenotypes.values()]),
-        #set([f'{output_plots}/{value.biobank_id}/{value.biobank_id}_manhattan.png' for value in phenotypes.values()]) 
+        set([f'{output_plots}/{value.biobank_id}/{value.biobank_id}_manhattan.png' for value in phenotypes.values()]) 
 
 
 rule filter_and_harmonize:
@@ -217,23 +234,40 @@ rule filter_and_harmonize:
         "--impute {params.impute_col} "
         "--n-case {params.case_n_col} "
         "--n-control {params.control_n_col} "
-        "--n-total {params.total_n_col}"#" &> {log}"
-    
+        "--n-total {params.total_n_col} &> {log}"
+
+
+for combine in combined:
+    rule:
+        name: f'align_{combine}'
+        input:
+            input_files = [x for x in combined[combine].aligned_files],
+            gnomad_flag_dir = gnomad_flag_dir
+        output:
+            out=f'{output_tsv}/{combine}/{combine}_aligned_results.tsv'
+        log:
+            f'{output_tsv}/{combine}/{combine}_aligned_results.log'
+        shell:
+            "python modules/combine.py "
+            "--gnomad-flag-dir {input.gnomad_flag_dir} "
+            "--file-paths {input.input_files} "
+            "--output-file {output.out}" #" &> {log}"
+
+
 for plot in plots:
     rule:
         name: f'scatter_{plot}'
         input:
-            input_files = [x for x in plots[plot].aligned_files],
-            gnomad_flag_dir = gnomad_flag_dir
+            input_file = plots[plot].aligned_file,
         output:
             out=f'{output_plots}/{plot}/{plot}_scatter.png'
         log:
             f"{output_plots}/{plot}/{plot}_scatter.log"
         shell:
             "python modules/scatter.py "
-            "--gnomad-flag-dir {input.gnomad_flag_dir} "
-            "--file-paths {input.input_files} "
+            "--file-path {input.input_file} "
             "--output-file {output.out} &> {log}"
+
 
 for plot in plots:
     rule:
@@ -242,16 +276,13 @@ for plot in plots:
             pval = plots[plot].pval_col,
             variant_id = plots[plot].variant_id_col,
         input:
-            input_files = [x for x in plots[plot].aligned_files],
-            gnomad_flag_dir = gnomad_flag_dir
+            input_file = plots[plot].aligned_file,
         output:
             manhattan_out=f'{output_plots}/{plot}/{plot}_manhattan.png'
         log:
             f"{output_plots}/{plot}/{plot}_manhattan.log"
         shell:
             "python modules/manhattan.py "
-            "--file-paths {input.input_files} "
-            "--gnomad-flag-dir {input.gnomad_flag_dir} "
-            "--variant-id-col {params.variant_id} "
+            "--file-path {input.input_file} "
             "--pval-col {params.pval} "
             "--manhattan-out {output.manhattan_out} &> {log}"

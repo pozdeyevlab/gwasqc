@@ -1,7 +1,5 @@
 """Make QQ & Manhattan Plots"""
-import sys
 from pathlib import Path
-from typing import List
 
 import defopt
 import matplotlib.pyplot as plt
@@ -21,35 +19,31 @@ from scipy import stats
 
 def plot(
     *,
-    file_paths: List[str],
-    gnomad_flag_dir: Path,
+    file_path: str,
     pval_col: str,
-    variant_id_col: str,
     manhattan_out: Path,
 ) -> None:
     """
-    :param file_paths: Path to alignment results files
+    :param file_path: Path to alignment results files
     :param pval_col: Column with p-value
-    :param variant_id_col: Column with variant id
     :param manhattan_out: Write manhattan plots to this file
     """
     # Columns to read from each file
-    if variant_id_col == "nan":
-        variant_id_col = "MarkerID"
     columns_to_read = [
         "Aligned_AF",
         pval_col,
-        variant_id_col,
+        "STUDY_ID",
         "CHR",
         "POS",
         "REF",
         "ALT",
+        "GNOMAD_AN_Flag"
     ]
 
     # Read specific columns from all files into a single polars DF
-    print(f"Files used:\n{list(file_paths)}")
+    print(f"File used: {file_path}")
     combined_df = _read_specific_columns(
-        file_paths, columns_to_read, pval_col, gnomad_flag_dir
+        file_path, columns_to_read, pval_col
     )
 
     # Manhattan plots for common and rare variants & qqplots
@@ -155,79 +149,24 @@ def _make_plot(
         )
 
 
-def _read_specific_columns(files, columns, pval_col, gnomad_flag_dir):
+def _read_specific_columns(file, columns, pval_col):
     columns = list(set(columns))
-    dfs = []
-    for file in files:
-        chrom = f"{file}".split("/")[-1].split("_")[0]
-        blacklist_df: pl.DataFrame = _get_blacklist_variants(
-            gnomad_flag_dir=gnomad_flag_dir, chrom=chrom
-        )
-        df = pl.read_csv(file, columns=columns, separator="\t", dtypes={"CHR": str})
 
-        # Add low AN flag to df
-        df = _add_an_flag(study_df=df, gnomad_df=blacklist_df)
-        dfs.append(df)
+    df = pl.read_csv(file, columns=columns, separator="\t", dtypes={"CHR": str})
+    print(df)
 
-    concat_df = pl.concat(dfs)
-    concat_df = concat_df.with_columns(
+    df = df.with_columns(
         pl.col("CHR").cast(str).str.replace("chr", "").alias("CHR")
     )
+    df = df.filter(pl.col(pval_col).is_not_null())
+    df = df.filter(pl.col("GNOMAD_AN_Flag") == 0)
 
-    concat_df = concat_df.filter(pl.col(pval_col).is_not_null())
-    concat_df = concat_df.filter(pl.col("AN_Flag") == 0)
-    print(concat_df)
     if pval_col == "LOG10P":
-        concat_df = concat_df.with_columns(
+        df = df.with_columns(
             (10 ** (-1 * pl.col(pval_col))).alias(pval_col)
         )
 
-    return concat_df
-
-
-def _get_blacklist_variants(gnomad_flag_dir: Path, chrom: str) -> pl.DataFrame:
-    if f"{chrom}" == "23":
-        chrom = "X"
-        gnomad_tsv = list(gnomad_flag_dir.glob(f"flagged_variants_*chr{chrom}.tsv"))[0]
-    else:
-        gnomad_tsv = list(gnomad_flag_dir.glob(f"flagged_variants_*chr{chrom}.tsv"))[0]
-    df = pl.read_csv(gnomad_tsv, separator="\t")
     return df
-
-
-def _add_an_flag(study_df: pl.DataFrame, gnomad_df: pl.DataFrame) -> pl.DataFrame:
-    # Remove chr from chrom col if present
-    gnomad_df = _make_id_column(new_column_name="GNOMAD_ID", polars_df=gnomad_df)
-    study_df = _make_id_column(new_column_name="STUDY_ID", polars_df=study_df)
-
-    study_df = study_df.with_columns(
-        pl.when((pl.col("STUDY_ID").is_in(list(set(gnomad_df["GNOMAD_ID"])))))
-        .then(1)
-        .otherwise(0)
-        .alias("AN_Flag")
-    )
-    return study_df
-
-
-def _make_id_column(
-    *,
-    new_column_name: str,
-    polars_df: pl.DataFrame,
-) -> pl.DataFrame:
-    """
-    Helper function to create id column
-    """
-    id_column = (
-        polars_df["CHR"].str.replace("chr", "")
-        + pl.lit(":")
-        + polars_df["POS"].cast(str)
-        + pl.lit(":")
-        + polars_df["REF"]
-        + pl.lit(":")
-        + polars_df["ALT"]
-    )
-    polars_df = polars_df.with_columns(id_column.alias(new_column_name))
-    return polars_df
 
 
 if __name__ == "__main__":

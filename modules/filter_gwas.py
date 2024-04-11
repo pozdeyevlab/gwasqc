@@ -423,7 +423,7 @@ def less_than_filter(
             pl.col(column_name) > threshold
         )
         print(
-            f"Found and removed {starting_count-polars_df.shape[0]}variants with {test_type} less than {threshold}"
+            f"Found and removed {starting_count-polars_df.shape[0]} variants with {test_type} less than {threshold}"
         )
         return polars_df
     else:
@@ -450,10 +450,10 @@ def equal_to_flag(
     if column_name is not None:
         # Only keep records that are not equal to threshold than (filtering out equal to)
         polars_df = polars_df.filter(
-            pl.col(column_name) == threshold
+            pl.col(column_name) != threshold
         )
         print(
-            f"Found and removed {starting_count-polars_df.shape[0]}variants with {test_type} less than {threshold}"
+            f"Found and removed {starting_count-polars_df.shape[0]} variants with {test_type} equal to {threshold}"
         )
         return polars_df
     else:
