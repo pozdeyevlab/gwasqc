@@ -26,7 +26,8 @@ def plot(
     # Columns to read from each file
     columns_to_read = [
         "Aligned_AF",
-        "AF",
+        "AF_gnomad",
+        "palindromic_af_flag",
         "gwas_is_palindromic",
         "FILTER",
         "Alignment_Method",
@@ -51,9 +52,9 @@ def plot(
     # Prepare data for palindromic and filter scatterplots
     ref_eaf_non_palindromic = combined_df.filter(
         pl.col("gwas_is_palindromic") == False
-    )["AF"]
+    )["AF_gnomad"]
     ref_eaf_palindromic = combined_df.filter(pl.col("gwas_is_palindromic") == True)[
-        "AF"
+        "AF_gnomad"
     ]
 
     # Set up scatterplot figure
@@ -160,7 +161,6 @@ def plot(
         "Distribution of\nMahalanobis Distances",
         fontsize=20,
     )
-
     figure.tight_layout()
     plt.savefig(
         output_file,

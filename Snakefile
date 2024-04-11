@@ -128,7 +128,7 @@ for index, row in map_df.iterrows():
                                         total_n_col = row['Total_N'],
                                         control_n_col = row['Control_N'],
                                         case_n_col = row['Case_N'])
-print(plots)
+
 ################################################################################
 # Directives
 ################################################################################

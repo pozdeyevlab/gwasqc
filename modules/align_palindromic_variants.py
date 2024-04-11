@@ -119,7 +119,7 @@ def harmonize(
     print(
         f"\nPalindromic Summary:\nTotal aligned palindromic variants: {sum(stacked_pl[col_map.palindromic_flag])}/{sum(gwas_pl[col_map.palindromic_flag])}\nTotal aligned palindromic varinats with method 'exact_match': {exact_align}\nTotal aligned palindromic varinats with method 'inverse_match': {inverse_align}\nTotal aligned palindromic varinats with allele frequencies between 0.4 and 0.6: {sum(stacked_pl[col_map.palindromic_af_flag])}"
     )
-
+  `
     # Calculate:
     # Absolute difference in AF
     # Fold change
@@ -272,11 +272,11 @@ def handle_palindromic_variants(
         col_map; Class of column names
     """
     exact_pl_subset = exact_pl.with_columns(
-        ABS_DIF_AF=abs((pl.col("AF") - pl.col(col_map.eaf)))
+        ABS_DIF_AF=abs((pl.col("AF_gnomad") - pl.col(col_map.eaf)))
     ).select(col_map.variant_id, "ABS_DIF_AF")
 
     inverse_pl_subset = inverse_pl.with_columns(
-        ABS_DIF_AF=abs((pl.col("AF") - (1 - pl.col(col_map.eaf))))
+        ABS_DIF_AF=abs((pl.col("AF_gnomad") - (1 - pl.col(col_map.eaf))))
     ).select(col_map.variant_id, "ABS_DIF_AF")
 
     joined = (

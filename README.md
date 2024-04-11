@@ -130,6 +130,8 @@ Not all fields are necessary at a minimum 'BioBank', 'PHENOTYPE', 'SEX', 'ANCEST
             **These flags are not finalized and may change**
     6. Calculate mahalanobis distances between gwas-af and gnomad-af for each variant, outliers are those that have a mahalanobis distance greater than 3 standard deviations from the mean. **Currently this seems to be filtering common variants with AF > 0.8, this is not finalized**
    
-    7. Write the aligned, unaligned, and missing position variants to three respective output files
+    5. Write the aligned, unaligned, and missing position variants to three respective output files 
+
+    7. Concatenate all aligned data, calculate outliers based on the mahalanobis distance between the gnomad-af and the gwas-af, and add AN warning flags from gnomad.
 
 3) Per input gwas summary create allele frequency scatterplots, manhattan, and qq-plots. 
