@@ -227,14 +227,14 @@ def align_alleles(
         method: The descriptor for what alignemtn method is being tested
     """
     # Remove chr from both ID's if present
-    gnomad_df = gnomad_df.with_columns(pl.col("ID").str.replace("chr", "").alias("ID"))
+    gnomad_df = gnomad_df.with_columns(pl.col("ID_gnomad").str.replace("chr", "").alias("ID_gnomad"))
 
     gwas_df = gwas_df.with_columns(
         pl.col(id_column).str.replace("chr", "").alias(id_column)
     )
 
     # Create sets of id columns and find overlap
-    gnomad_set: set = set(gnomad_df["ID"])
+    gnomad_set: set = set(gnomad_df["ID_gnomad"])
     gwas_set: set = set(gwas_df[id_column])
     aligned_set: set = gnomad_set & gwas_set
 
@@ -250,7 +250,7 @@ def align_alleles(
         joined_df = aligned_df.join(
             gnomad_df,
             left_on=id_column,
-            right_on="ID",
+            right_on="ID_gnomad",
             how="left",
             suffix="_gnomad",
         )

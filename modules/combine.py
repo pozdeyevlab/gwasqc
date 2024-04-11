@@ -55,8 +55,8 @@ def _combine_files(files, gnomad_flag_dir):
         blacklist_df: pl.DataFrame = _get_blacklist_variants(
             gnomad_flag_dir=gnomad_flag_dir, chrom=chrom
         )
-        df = pl.read_csv(file, separator="\t", dtypes={"CHR": str})
-
+        df = pl.read_csv(file, separator="\t", dtypes={"CHR_gnomad": str})
+        print(df)
         # Add low AN flag to df
         df = _add_an_flag(study_df=df, gnomad_df=blacklist_df)
         dfs.append(df)
@@ -76,8 +76,8 @@ def _get_blacklist_variants(gnomad_flag_dir: Path, chrom: str) -> pl.DataFrame:
 
 def _add_an_flag(study_df: pl.DataFrame, gnomad_df: pl.DataFrame) -> pl.DataFrame:
     # Remove chr from chrom col if present
-    gnomad_df = _make_id_column(new_column_name="GNOMAD_ID", polars_df=gnomad_df)
-    study_df = _make_id_column(new_column_name="STUDY_ID", polars_df=study_df)
+    gnomad_df = _make_id_column(new_column_name="GNOMAD_ID", polars_df=gnomad_df, CHR="CHR", POS="POS", REF="REF", ALT="ALT")
+    study_df = _make_id_column(new_column_name="STUDY_ID", polars_df=study_df, CHR="CHR_gnomad", POS="POS_gnomad", REF="REF_gnomad", ALT="ALT_gnomad")
 
     study_df = study_df.with_columns(
         pl.when((pl.col("STUDY_ID").is_in(list(set(gnomad_df["GNOMAD_ID"])))))
@@ -92,18 +92,22 @@ def _make_id_column(
     *,
     new_column_name: str,
     polars_df: pl.DataFrame,
+    CHR: str,
+    POS: str,
+    REF: str,
+    ALT: str
 ) -> pl.DataFrame:
     """
     Helper function to create id column
     """
     id_column = (
-        polars_df["CHR"].str.replace("chr", "")
+        polars_df[CHR].str.replace("chr", "")
         + pl.lit(":")
-        + polars_df["POS"].cast(str)
+        + polars_df[POS].cast(str)
         + pl.lit(":")
-        + polars_df["REF"]
+        + polars_df[REF]
         + pl.lit(":")
-        + polars_df["ALT"]
+        + polars_df[ALT]
     )
     polars_df = polars_df.with_columns(id_column.alias(new_column_name))
     return polars_df

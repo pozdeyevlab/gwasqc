@@ -32,10 +32,10 @@ def plot(
         "FILTER",
         "Alignment_Method",
         "ABS_DIF_AF",
-        "CHR",
-        "POS",
-        "REF",
-        "ALT",
+        "CHR_gnomad",
+        "POS_gnomad",
+        "REF_gnomad",
+        "ALT_gnomad",
         "outlier_pval",
         "outlier_stdev",
         "mahalanobis",
@@ -172,7 +172,7 @@ def plot(
 
 
 def _read_specific_columns(file, columns):
-    df = pl.read_csv(file, columns=columns, separator="\t", dtypes={"CHR": str})
+    df = pl.read_csv(file, columns=columns, separator="\t", dtypes={"CHR_gnoamd": str})
     return df
 
 

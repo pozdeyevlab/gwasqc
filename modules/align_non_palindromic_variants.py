@@ -56,7 +56,7 @@ def harmonize(
         polars_df=gnomad_pl,
     )
 
-    matches_count = new.filter(pl.col("ID").is_in(pl.col("Flipped_Allele_ID")))
+    matches_count = new.filter(pl.col("ID_gnomad").is_in(pl.col("Flipped_Allele_ID")))
 
     print(
         f"\nNon-Palindromic Summary:\nTotal complementary non-palindromic variants: {matches_count.shape[0]}"
@@ -235,13 +235,13 @@ def _make_id_column_gnomad(
     Helper function to create id columns with differenc effect and non effect allele combinaitons
     """
     id_column = (
-        polars_df["CHR"].cast(str)
+        polars_df["CHR_gnomad"].cast(str)
         + pl.lit(":")
-        + polars_df["POS"].cast(str)
+        + polars_df["POS_gnomad"].cast(str)
         + pl.lit(":")
-        + polars_df["ALT"]
+        + polars_df["ALT_gnomad"]
         + pl.lit(":")
-        + polars_df["REF"]
+        + polars_df["REF_gnomad"]
     )
     polars_df = polars_df.with_columns(id_column.alias(new_column_name))
     return polars_df
@@ -260,14 +260,14 @@ def align_alleles(
         method: The descriptor for what alignemtn method is being tested
     """
     # Remove chr from both ID's if present
-    gnomad_df = gnomad_df.with_columns(pl.col("ID").str.replace("chr", "").alias("ID"))
+    gnomad_df = gnomad_df.with_columns(pl.col("ID_gnomad").str.replace("chr", "").alias("ID_gnomad"))
 
     gwas_df = gwas_df.with_columns(
         pl.col(id_column).str.replace("chr", "").alias(id_column)
     )
 
     # Create sets of id columns and find overlap
-    gnomad_set: set = set(gnomad_df["ID"])
+    gnomad_set: set = set(gnomad_df["ID_gnomad"])
     gwas_set: set = set(gwas_df[id_column])
     aligned_set: set = gnomad_set & gwas_set
 
@@ -283,7 +283,7 @@ def align_alleles(
         joined_df = aligned_df.join(
             gnomad_df,
             left_on=id_column,
-            right_on="ID",
+            right_on="ID_gnomad",
             how="left",
             suffix="_gnomad",
         )
@@ -306,11 +306,11 @@ def handle_complementary_variants(
     """
     exact_pl_subset = exact_pl.with_columns(
         ABS_DIF_AF=abs((pl.col("AF_gnomad") - pl.col(col_map.eaf)))
-    ).select(col_map.variant_id, col_map.eaf, "ABS_DIF_AF", "AF_gnomad", "REF", "ALT")
+    ).select(col_map.variant_id, col_map.eaf, "ABS_DIF_AF", "AF_gnomad", "REF_gnomad", "ALT_gnomad")
 
     inverse_pl_subset = inverse_pl.with_columns(
         ABS_DIF_AF=abs((pl.col("AF_gnomad") - (1 - pl.col(col_map.eaf))))
-    ).select(col_map.variant_id, col_map.eaf, "ABS_DIF_AF", "AF_gnomad", "REF", "ALT")
+    ).select(col_map.variant_id, col_map.eaf, "ABS_DIF_AF", "AF_gnomad", "REF_gnomad", "ALT_gnomad")
 
     joined = (
         exact_pl_subset.join(inverse_pl_subset, on=col_map.variant_id, how="inner")

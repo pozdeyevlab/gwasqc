@@ -33,10 +33,10 @@ def plot(
         "Aligned_AF",
         pval_col,
         "STUDY_ID",
-        "CHR",
-        "POS",
-        "REF",
-        "ALT",
+        "CHR_gnomad",
+        "POS_gnomad",
+        "REF_gnomad",
+        "ALT_gnomad",
         "GNOMAD_AN_Flag"
     ]
 
@@ -100,8 +100,8 @@ def _make_plot(
     pval_col: str,
     maf_cutoff: str,
 ) -> None:
-    df = df.with_columns((pl.col("CHR").str.replace("chr", "")).alias("CHR")).sort(
-        "CHR", "POS"
+    df = df.with_columns((pl.col("CHR_gnomad").str.replace("chr", "")).alias("CHR_gnomad")).sort(
+        "CHR_gnomad", "POS_gnomad"
     )
 
     if maf_cutoff.lower() == "common":
@@ -135,8 +135,8 @@ def _make_plot(
         qqman.manhattan(
             pandas_df,
             ax=axes[row, col],
-            col_chr="CHR",
-            col_bp="POS",
+            col_chr="CHR_gnomad",
+            col_bp="POS_gnomad",
             col_p=pval_col,
             col_snp="STUDY_ID",
             title=title,
@@ -152,11 +152,11 @@ def _make_plot(
 def _read_specific_columns(file, columns, pval_col):
     columns = list(set(columns))
 
-    df = pl.read_csv(file, columns=columns, separator="\t", dtypes={"CHR": str})
+    df = pl.read_csv(file, columns=columns, separator="\t", dtypes={"CHR_gnomad": str})
     print(df)
 
     df = df.with_columns(
-        pl.col("CHR").cast(str).str.replace("chr", "").alias("CHR")
+        pl.col("CHR_gnomad").cast(str).str.replace("chr", "").alias("CHR_gnomad")
     )
     df = df.filter(pl.col(pval_col).is_not_null())
     df = df.filter(pl.col("GNOMAD_AN_Flag") == 0)

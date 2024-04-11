@@ -74,29 +74,30 @@ def read_reference(
         )
 
     gnomad_pl = gnomad_pl.rename(names_dict)
-    gnomad_pl = gnomad_pl.filter(pl.col("POS").is_in(positions))
+    gnomad_pl = gnomad_pl.filter(pl.col("POS_gnomad").is_in(positions))
     gnomad_pl = gnomad_pl.filter(pl.col("AN_gnomad") > 0)
 
     # Add ID column
-    # Create the 'ID' column by concatenating values from 'CHR', 'POS', 'REF', and 'ALT'
+    # Create the 'ID_gnomad' column by concatenating values from 'CHR', 'POS', 'REF', and 'ALT'
     id_column = (
-        gnomad_pl["CHR"].cast(str)
+        gnomad_pl["CHR_gnomad"].cast(str)
         + pl.lit(":")
-        + gnomad_pl["POS"].cast(str)
+        + gnomad_pl["POS_gnomad"].cast(str)
         + pl.lit(":")
-        + gnomad_pl["REF"]
+        + gnomad_pl["REF_gnomad"]
         + pl.lit(":")
-        + gnomad_pl["ALT"]
+        + gnomad_pl["ALT_gnomad"]
     )
 
-    # Create a new DataFrame with the 'ID' column added
-    gnomad_pl = gnomad_pl.with_columns(id_column.alias("ID"))
+    # Create a new DataFrame with the 'ID_gnomad' column added
+    gnomad_pl = gnomad_pl.with_columns(id_column.alias("ID_gnomad"))
 
     gnomad_end = datetime.now()
     total = gnomad_end - gnomad_get_start
     print(
         f"\nFinished searching and filtering gnomAD reference in {total}:\n{datetime.now()}\n"
     )
+    print(gnomad_pl)
     return gnomad_pl
 
 
@@ -113,10 +114,10 @@ def _make_names_dict(
     filter_flag = _search_patterns_in_header(pattern=r"FILTER", header=header)[0]
 
     # Add to empty dictionary
-    dtypes[chromsome] = "CHR"
-    dtypes[position] = "POS"
-    dtypes[ref] = "REF"
-    dtypes[alt] = "ALT"
+    dtypes[chromsome] = "CHR_gnomad"
+    dtypes[position] = "POS_gnomad"
+    dtypes[ref] = "REF_gnomad"
+    dtypes[alt] = "ALT_gnomad"
     dtypes[filter_flag] = "FILTER"
     dtypes[allele_number] = "AN_gnomad"
     dtypes[allele_frequency] = "AF_gnomad"

@@ -142,7 +142,7 @@ def harmonize(
     )
 
     # Find the number of non-existant positions
-    dif = set(gwas_pl[col_map.pos]).difference(set(gnomad_pl["POS"]))
+    dif = set(gwas_pl[col_map.pos]).difference(set(gnomad_pl["POS_gnomad"]))
 
     # Write file of non matching positions
     _write_or_append_to_file(
@@ -179,7 +179,7 @@ def harmonize(
     # Re-order stacked_pl so that is is easier to read
     reorder = []
 
-    first = ['CHR', 'POS', 'REF', 'ALT', 'AF_gnomad', col_map.eaf, 'Aligned_AF', 'Aligned_Beta', 'Alignment_Method']
+    first = ['CHR_gnomad', 'POS_gnomad', 'REF_gnomad', 'ALT_gnomad', 'AF_gnomad', col_map.eaf, 'Aligned_AF', 'Aligned_Beta', 'Alignment_Method']
 
     reorder.extend(first)
     [reorder.append(x) for x in stacked_pl.columns if x not in first]
