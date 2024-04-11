@@ -180,7 +180,7 @@ rule all:
         [f'{output_tsv}/{value.biobank_id}/{key}_aligned_to_gnomad.tsv' for key, value in phenotypes.items()],
         set([f'{output_tsv}/{value.biobank_id}/{value.biobank_id}_aligned_results.tsv' for value in phenotypes.values()]),
         set([f'{output_plots}/{value.biobank_id}/{value.biobank_id}_scatter.png' for value in phenotypes.values()]),
-        set([f'{output_plots}/{value.biobank_id}/{value.biobank_id}_manhattan.png' for value in phenotypes.values()]) 
+        #set([f'{output_plots}/{value.biobank_id}/{value.biobank_id}_manhattan.png' for value in phenotypes.values()]) 
 
 
 rule filter_and_harmonize:
@@ -251,7 +251,7 @@ for combine in combined:
             "python modules/combine.py "
             "--gnomad-flag-dir {input.gnomad_flag_dir} "
             "--file-paths {input.input_files} "
-            "--output-file {output.out}" #" &> {log}"
+            "--output-file {output.out} &> {log}"
 
 
 for plot in plots:
