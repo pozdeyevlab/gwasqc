@@ -2,7 +2,7 @@
 Module for reading in GWAS summary stats from either regenie or saige.
 The module completes the following steps:
 1) Creates a column map so that column names of both Regenie and Saige summary stats can be analyzed
-2) Add qc flaggs for the following
+2) Remove variants that meet atleast one of the following
     a) beta > 1e6 or beta < -1e6
     b) se > 1e6 or se < -1e6
     c) p-values equal to 0
@@ -25,6 +25,7 @@ from typing import Optional, Union
 
 import attr
 import defopt
+import numpy as np
 import polars as pl
 
 # pylint: disable=R0914, R0913, R0903, C0301
@@ -43,11 +44,6 @@ class Columns:
     beta: Optional[str]
     pval: Optional[str]
     variant_id: Optional[str]
-    beta_gt_threshold_flag: Optional[str] = "beta_gt_threshold"
-    beta_lt_threshold_flag: Optional[str] = "beta_lt_threshold"
-    se_gt_threshold_flag: Optional[str] = "se_gt_threshold"
-    se_lt_threshold_flag: Optional[str] = "se_lt_threshold"
-    pval_flag: Optional[str] = "pval_is_zero"
     palindromic_flag: Optional[str] = "gwas_is_palindromic"
     palindromic_af_flag: Optional[str] = "palindromic_af_flag"
     impute_flag: Optional[str] = "imputation_lt_threshold"
@@ -70,7 +66,7 @@ class Results:
 def filter_summary_stats(
     *,
     gwas_results: Path,
-    gwas_software: str,
+    gwas_software: Optional[str],
     chrom: Optional[str],
     position: Optional[str],
     ea: Optional[str],
@@ -135,6 +131,11 @@ def filter_summary_stats(
             raw_df: pl.DataFrame = read_gwas(
                 gwas_results, found_columns, chromosome, sep=" "
             )
+        elif gwas_software.lower() == "nan":
+            print("No gwas-software was provided, assuming data is tab separated\n")
+            raw_df: pl.DataFrame = read_gwas(
+                gwas_results, found_columns, chromosome, sep="\t"
+            )
         else:
             raise ValueError(
                 f"The provided GWAS software: {gwas_software} is not supported -- available options are regenie or saige\n"
@@ -142,32 +143,46 @@ def filter_summary_stats(
     except FileNotFoundError:
         print(f"File '{gwas_results}' not found.")
 
-    # Add flags for filtering criteria
+    # Remove variants that do not meet QC requirements
     # Beta flags 'beta_gt_threshold' & 'beta_lt_threshold'
-    raw_df = greater_than_flag(
-        raw_df, found_columns.beta, found_columns.beta_gt_threshold_flag, 1e6
+    print("QC Summary:")
+    raw_df = (
+        greater_than_filter(
+            raw_df, found_columns.beta, 'beta', 1e6
+        )
     )
-    raw_df = less_than_flag(
-        raw_df, found_columns.beta, found_columns.beta_lt_threshold_flag, -1e6
+
+    raw_df = (
+        less_than_filter(
+            raw_df, found_columns.beta, 'beta', -1e6
+        )
     )
 
     # SE flags 'se_gt_threshold' & 'se_lt_threshold'
-    raw_df = greater_than_flag(
-        raw_df, found_columns.se, found_columns.se_gt_threshold_flag, 1e6
+    raw_df = (
+        greater_than_filter(
+            raw_df, found_columns.se, 'standard error', 1e6
+        )
     )
-    raw_df = less_than_flag(
-        raw_df, found_columns.se, found_columns.se_lt_threshold_flag, -1e6
+
+    raw_df = (
+        less_than_filter(
+            raw_df, found_columns.se, 'standard error', -1e6
+        )
     )
 
     # Flag p-values equal to 0
-    raw_df = equal_to_flag(raw_df, found_columns.pval, found_columns.pval_flag, 0)
+    if found_columns.pval is not None:
+        raw_df = (
+            equal_to_flag(raw_df, found_columns.pval, 'pval', 0)
+        )
 
-    # Flag imputation less than 0.3
-    raw_df = less_than_flag(
-        raw_df, found_columns.imputation, found_columns.impute_flag, 0.3
+    # Remove variants with imputation less than 0.3
+    raw_df = (
+        less_than_filter(raw_df, found_columns.imputation, 'imputation', 0.3)
     )
 
-    # Check that an ID column exists, if not add one
+    # Check that an ID column exists, if not add one named 'MarkerID'
     if found_columns.variant_id is None:
         id_column = (
             raw_df[found_columns.chrom].cast(str).replace("chr", "").replace("23", "X")
@@ -198,13 +213,11 @@ def filter_summary_stats(
         .alias(found_columns.variant_id)
     )
 
-    if "biome" in gwas_results.name.lower():
-        # Write unusable variants
-        raw_df.filter(pl.col(found_columns.variant_id).str.contains(">")).write_csv(
-            unusable_path, separator="\t", include_header=True
-        )
-
-        raw_df = raw_df.filter(~pl.col(found_columns.variant_id).str.contains(">"))
+    # Write unusable variants
+    raw_df.filter(pl.col(found_columns.variant_id).str.contains(">")).write_csv(
+        unusable_path, separator="\t", include_header=True
+    )
+    raw_df = raw_df.filter(~pl.col(found_columns.variant_id).str.contains(">"))
 
     raw_df.filter(
         (pl.col(found_columns.effect_allele).str.contains("N"))
@@ -218,7 +231,7 @@ def filter_summary_stats(
             | (pl.col(found_columns.non_effect_allele).str.contains("-"))
         )
     )
-    print(raw_df)
+
     # Extract effect and non-effect allele from ID based on position
     raw_df = raw_df.with_columns(
         pl.col(found_columns.variant_id)
@@ -260,13 +273,14 @@ def filter_summary_stats(
         .alias(found_columns.eaf)
     )
 
-    # Attempt to fix CCPM Error
-    raw_df = raw_df.with_columns(
-        pl.when(pl.col("Reported_Alleles_Match_ID"))
-        .then(pl.col(found_columns.beta))
-        .otherwise(-1 * pl.col(found_columns.beta))
-        .alias(found_columns.beta)
-    )
+    # Get allele1 and allele2 from SNPID rather than provided columns (originated from CCPM error)
+    if found_columns.beta is not None:
+        raw_df = raw_df.with_columns(
+            pl.when(pl.col("Reported_Alleles_Match_ID"))
+            .then(pl.col(found_columns.beta))
+            .otherwise(-1 * pl.col(found_columns.beta))
+            .alias(found_columns.beta)
+        )
 
     found_columns.effect_allele = "Effect_Allele_From_ID"
     found_columns.non_effect_allele = "Non_Effect_Allele_From_ID"
@@ -312,7 +326,7 @@ def filter_summary_stats(
     final_results: Results = Results(summary_stats=raw_df, column_map=found_columns)
     filter_end = datetime.now()
     total = filter_end - filter_start
-    print(f"Column Map for chr{chromosome}:\n{found_columns}\n")
+    print(f"\nColumn Map for chr{chromosome}:\n{found_columns}\n")
     print(f"Completed reading and filtering {gwas_results} chr{chromosome} in {total}")
 
     return final_results
@@ -357,79 +371,94 @@ def read_gwas(
     )
 
 
-def greater_than_flag(
+def greater_than_filter(
     polars_df: pl.DataFrame,
     column_name: str,
-    new_column_name: str,
+    test_type: str,
     threshold: Union[float, int],
 ) -> pl.DataFrame:
     """
-    If the column name exists then assert that the value is greater than the provided threshold and return T/F
+    If provided column exists, filter accordingly and return new df otherwise return unfiltered df
 
     Args:
         polars_df: The polars dataframe to analyze
         column_name: The name of the column to compare to the threshold
-        new_column_name: Name of the column to record boolena outcome
+        test_type: Descriptor for column that is being investigated (beta, stder)
         threshold: Float or int to comare values in column to
     """
+    starting_count = polars_df.shape[0]
     if column_name is not None:
-        return polars_df.with_columns(
-            pl.when(pl.col(column_name) > threshold)
-            .then(True)
-            .otherwise(False)
-            .alias(new_column_name)
+        # Only keep records that are less than (filtering out greater than)
+        polars_df = polars_df.filter(
+            pl.col(column_name) < threshold
         )
-    return polars_df.with_columns(pl.lit(None).cast(pl.Int64()).alias(new_column_name))
+        print(
+            f"Found and removed {starting_count-polars_df.shape[0]} variants with {test_type} greater than {threshold}"
+        )
+        return polars_df
+    else:
+        print(f"Atempted to filter for (remove) variants with {test_type} greater than {threshold}\nProvided column name did does not exist, returning un-filtered data frame\n")
+        return polars_df
 
 
-def less_than_flag(
+def less_than_filter(
     polars_df: pl.DataFrame,
     column_name: str,
-    new_column_name: str,
+    test_type: str,
     threshold: Union[float, int],
 ) -> pl.DataFrame:
     """
-    If the column name exists then assert that the value is less than the provided threshold and return T/F
+    If provided column exists, filter accordingly and return new df otherwise return unfiltered df
 
     Args:
         polars_df: The polars dataframe to analyze
         column_name: The name of the column to compare to the threshold
-        new_column_name: Name of the column to record boolena outcome
+        test_type: Descriptor for column that is being investigated (beta, stder)
         threshold: Float or int to comare values in column to
     """
+    starting_count = polars_df.shape[0]
     if column_name is not None:
-        return polars_df.with_columns(
-            pl.when(pl.col(column_name) < threshold)
-            .then(True)
-            .otherwise(False)
-            .alias(new_column_name)
+        # Only keep records that are greater than (filtering out less than)
+        polars_df = polars_df.filter(
+            pl.col(column_name) > threshold
         )
-    return polars_df.with_columns(pl.lit(None).cast(pl.Int64()).alias(new_column_name))
+        print(
+            f"Found and removed {starting_count-polars_df.shape[0]} variants with {test_type} less than {threshold}"
+        )
+        return polars_df
+    else:
+        print(f"Atempted to filter for (remove) variants with {test_type} less than {threshold}\nProvided column name did does not exist, returning un-filtered data frame\n")
+        return polars_df
 
 
 def equal_to_flag(
     polars_df: pl.DataFrame,
     column_name: str,
-    new_column_name: str,
+    test_type: str,
     threshold: Union[float, int],
 ) -> pl.DataFrame:
     """
-    If the column name exists then assert that the value is equal to the provided threshold and return T/F
+    If provided column exists, filter accordingly and return new df otherwise return unfiltered df
 
     Args:
         polars_df: The polars dataframe to analyze
         column_name: The name of the column to compare to the threshold
-        new_column_name: Name of the column to record boolena outcome
+        test_type: Descriptor for test
         threshold: Float or int to comare values in column to
     """
+    starting_count = polars_df.shape[0]
     if column_name is not None:
-        return polars_df.with_columns(
-            pl.when(pl.col(column_name) == threshold)
-            .then(True)
-            .otherwise(False)
-            .alias(new_column_name)
+        # Only keep records that are not equal to threshold than (filtering out equal to)
+        polars_df = polars_df.filter(
+            pl.col(column_name) != threshold
         )
-    return polars_df.with_columns(pl.lit(None).cast(pl.Int64()).alias(new_column_name))
+        print(
+            f"Found and removed {starting_count-polars_df.shape[0]} variants with {test_type} equal to {threshold}"
+        )
+        return polars_df
+    else:
+        print(f"Atempted to filter for (remove) variants with {test_type} equal to {threshold}\nProvided column name did does not exist, returning un-filtered data frame\n")
+        return polars_df
 
 
 def _search_header_for_positions(col_name: str) -> Optional[str]:
