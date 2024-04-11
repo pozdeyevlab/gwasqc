@@ -33,7 +33,7 @@ def combine(
 
     # Calculate outliers with mahalobis distances
     outlier_pl = mahalanobis.calculate(
-        aligned_pl=combined_pl.select(["STUDY_ID","Aligned_AF", "AF"])
+        aligned_pl=combined_pl.select(["STUDY_ID","Aligned_AF", "AF_gnomad"])
     )
     outlier_pl = pl.concat([outlier_pl, combined_pl], how='align')
     print(outlier_pl.columns)

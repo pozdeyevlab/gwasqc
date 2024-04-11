@@ -128,9 +128,8 @@ Not all fields are necessary at a minimum 'BioBank', 'PHENOTYPE', 'SEX', 'ANCEST
             *'alt_af'=The allele frequency of the alternative allele in the GWAS data set was closer to AF-gnomAD than the reference allele
             *'fold_change'= The fold difference was greater than two (gwas-af vs gnomad-af)
             **These flags are not finalized and may change**
-    6. Calculate mahalanobis distances between gwas-af and gnomad-af for each variant, outliers are those that have a mahalanobis distance greater than 3 standard deviations from the mean. **Currently this seems to be filtering common variants with AF > 0.8, this is not finalized**
-   
-    5. Write the aligned, unaligned, and missing position variants to three respective output files 
+
+    6. Write the aligned, unaligned, and missing position variants to three respective output files 
 
     7. Concatenate all aligned data, calculate outliers based on the mahalanobis distance between the gnomad-af and the gwas-af, and add AN warning flags from gnomad.
 

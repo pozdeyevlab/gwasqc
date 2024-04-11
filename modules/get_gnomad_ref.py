@@ -41,12 +41,12 @@ def read_reference(
 
     # Search for AN & AF columns according to sex and ancestry
     an_columns = find_correct_columns(
-        header, "AN_gnomad", sex=_convert_sex(sex), ancestry=_convert_ancestry(ancestry)
+        header, "AN", sex=_convert_sex(sex), ancestry=_convert_ancestry(ancestry)
     )
     print(f"Found AN = {an_columns}")
 
     af_columns = find_correct_columns(
-        header, "AF_gnomad", sex=_convert_sex(sex), ancestry=_convert_ancestry(ancestry)
+        header, "AF", sex=_convert_sex(sex), ancestry=_convert_ancestry(ancestry)
     )
     print(f"Found AF = {af_columns}")
 

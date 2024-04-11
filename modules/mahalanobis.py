@@ -21,7 +21,7 @@ def calculate(
     """
     :param aligned_pl: Data frame with aligned variants
     """
-    data_np = aligned_pl.select("AF", "Aligned_AF").to_numpy()
+    data_np = aligned_pl.select("AF_gnomad", "Aligned_AF").to_numpy()
 
     # Calculate covariance matrix
     covariance_matrix = np.cov(data_np.T)

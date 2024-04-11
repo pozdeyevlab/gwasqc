@@ -119,7 +119,7 @@ def harmonize(
     print(
         f"\nPalindromic Summary:\nTotal aligned palindromic variants: {sum(stacked_pl[col_map.palindromic_flag])}/{sum(gwas_pl[col_map.palindromic_flag])}\nTotal aligned palindromic varinats with method 'exact_match': {exact_align}\nTotal aligned palindromic varinats with method 'inverse_match': {inverse_align}\nTotal aligned palindromic varinats with allele frequencies between 0.4 and 0.6: {sum(stacked_pl[col_map.palindromic_af_flag])}"
     )
-  `
+
     # Calculate:
     # Absolute difference in AF
     # Fold change
@@ -128,14 +128,14 @@ def harmonize(
 
     stacked_pl = (
         stacked_pl.with_columns(
-            (abs(pl.col("AF") - pl.col("Aligned_AF"))).alias("ABS_DIF_AF")
+            (abs(pl.col("AF_gnomad") - pl.col("Aligned_AF"))).alias("ABS_DIF_AF")
         )
-        .with_columns(((pl.col("AF") / pl.col("Aligned_AF"))).alias("FOLD_CHANGE_AF"))
+        .with_columns(((pl.col("AF_gnomad") / pl.col("Aligned_AF"))).alias("FOLD_CHANGE_AF"))
         .with_columns(
             (
                 pl.when(
                     (
-                        ((abs((1 - pl.col("AF")) - pl.col("Aligned_AF"))))
+                        ((abs((1 - pl.col("AF_gnomad")) - pl.col("Aligned_AF"))))
                         < pl.col("ABS_DIF_AF")
                     )
                 )
@@ -147,8 +147,8 @@ def harmonize(
         .with_columns(
             (
                 pl.when(
-                    ((pl.col("AF") < 0.4) & (pl.col("Aligned_AF") > 0.6))
-                    | ((pl.col("AF") > 0.6) & (pl.col("Aligned_AF") < 0.4))
+                    ((pl.col("AF_gnomad") < 0.4) & (pl.col("Aligned_AF") > 0.6))
+                    | ((pl.col("AF_gnomad") > 0.6) & (pl.col("Aligned_AF") < 0.4))
                 )
                 .then(1)
                 .otherwise(0)

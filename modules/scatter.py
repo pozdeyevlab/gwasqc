@@ -67,7 +67,7 @@ def plot(
     for alignment_method in alignment_methods:
         # Scatterplots
         axes[0, 0].scatter(
-            combined_df.filter((pl.col("Alignment_Method") == alignment_method))["AF"],
+            combined_df.filter((pl.col("Alignment_Method") == alignment_method))["AF_gnomad"],
             combined_df.filter((pl.col("Alignment_Method") == alignment_method))[
                 "Aligned_AF"
             ],
@@ -87,7 +87,7 @@ def plot(
     for pal in palindrome:
         # Scatterplots
         axes[0, 1].scatter(
-            combined_df.filter((pl.col("gwas_is_palindromic") == pal))["AF"],
+            combined_df.filter((pl.col("gwas_is_palindromic") == pal))["AF_gnomad"],
             combined_df.filter((pl.col("gwas_is_palindromic") == pal))["Aligned_AF"],
             label=pal,
             s=10,
@@ -102,19 +102,19 @@ def plot(
 
     # AN gnomAD Filter
     axes[1, 0].scatter(
-        combined_df.filter(pl.col("GNOMAD_AN_Flag") == 0)["AF"],
+        combined_df.filter(pl.col("GNOMAD_AN_Flag") == 0)["AF_gnomad"],
         combined_df.filter(pl.col("GNOMAD_AN_Flag") == 0)["Aligned_AF"],
         label="AN >= .5(max(AN))",
         s=10,
     )
     axes[1, 0].scatter(
-        combined_df.filter(pl.col("GNOMAD_AN_Flag") == 1)["AF"],
+        combined_df.filter(pl.col("GNOMAD_AN_Flag") == 1)["AF_gnomad"],
         combined_df.filter(pl.col("GNOMAD_AN_Flag") == 1)["Aligned_AF"],
         label="AN < .5(max(AN))",
         s=10,
     )
     axes[1, 0].set_title(
-        f"AN Filter Based On GnomAD Warning\nFlagged:{len(combined_df.filter(pl.col('GNOMAD_AN_Flag') == 1)['AF'])}",
+        f"AN Filter Based On GnomAD Warning\nFlagged:{len(combined_df.filter(pl.col('GNOMAD_AN_Flag') == 1)['AF_gnomad'])}",
         fontsize=20,
     )
     axes[1, 0].set_xlabel("gnomad EAF", fontsize=15)
@@ -125,7 +125,7 @@ def plot(
     for out in ["Yes", "No"]:
         # Scatterplots
         axes[1, 1].scatter(
-            combined_df.filter((pl.col("outlier_stdev") == out))["AF"],
+            combined_df.filter((pl.col("outlier_stdev") == out))["AF_gnomad"],
             combined_df.filter((pl.col("outlier_stdev") == out))["Aligned_AF"],
             label=out,
             s=10,
@@ -141,7 +141,7 @@ def plot(
 
     # Mahalanobis & An Flags
     axes[2, 0].scatter(
-        combined_df.filter((pl.col("outlier_stdev") == out) & (pl.col("GNOMAD_AN_Flag") == 0))["AF"],
+        combined_df.filter((pl.col("outlier_stdev") == out) & (pl.col("GNOMAD_AN_Flag") == 0))["AF_gnomad"],
         combined_df.filter((pl.col("outlier_stdev") == out) & (pl.col("GNOMAD_AN_Flag") == 0))["Aligned_AF"],
         label=out,
         s=10,
