@@ -41,12 +41,12 @@ def read_reference(
 
     # Search for AN & AF columns according to sex and ancestry
     an_columns = find_correct_columns(
-        header, "AN", sex=_convert_sex(sex), ancestry=_convert_ancestry(ancestry)
+        header, "AN_gnomad", sex=_convert_sex(sex), ancestry=_convert_ancestry(ancestry)
     )
     print(f"Found AN = {an_columns}")
 
     af_columns = find_correct_columns(
-        header, "AF", sex=_convert_sex(sex), ancestry=_convert_ancestry(ancestry)
+        header, "AF_gnomad", sex=_convert_sex(sex), ancestry=_convert_ancestry(ancestry)
     )
     print(f"Found AF = {af_columns}")
 
@@ -75,7 +75,7 @@ def read_reference(
 
     gnomad_pl = gnomad_pl.rename(names_dict)
     gnomad_pl = gnomad_pl.filter(pl.col("POS").is_in(positions))
-    gnomad_pl = gnomad_pl.filter(pl.col("AN") > 0)
+    gnomad_pl = gnomad_pl.filter(pl.col("AN_gnomad") > 0)
 
     # Add ID column
     # Create the 'ID' column by concatenating values from 'CHR', 'POS', 'REF', and 'ALT'
@@ -118,8 +118,8 @@ def _make_names_dict(
     dtypes[ref] = "REF"
     dtypes[alt] = "ALT"
     dtypes[filter_flag] = "FILTER"
-    dtypes[allele_number] = "AN"
-    dtypes[allele_frequency] = "AF"
+    dtypes[allele_number] = "AN_gnomad"
+    dtypes[allele_frequency] = "AF_gnomad"
 
     return dtypes
 

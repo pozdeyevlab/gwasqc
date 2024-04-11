@@ -29,7 +29,7 @@ def plot(
     # Columns to read from each file
     columns_to_read = [
         "Aligned_AF",
-        "AF",
+        "AF_gnomad",
         "palindromic_af_flag",
         "gwas_is_palindromic",
         "beta_gt_threshold",
@@ -65,11 +65,11 @@ def plot(
     # Prepare data for palindromic and filter scatterplots
     ref_eaf_non_palindromic = combined_df.filter(
         pl.col("gwas_is_palindromic") == False
-    )["AF"]
+    )["AF_gnomad"]
     ref_eaf_palindromic = combined_df.filter(pl.col("gwas_is_palindromic") == True)[
-        "AF"
+        "AF_gnomad"
     ]
-    ref_eaf_filtered = filtered_pl["AF"]
+    ref_eaf_filtered = filtered_pl["AF_gnomad"]
     study_eaf_filtered = filtered_pl["Aligned_AF"]
 
     # Set up scatterplot figure
@@ -85,7 +85,7 @@ def plot(
             combined_df.filter(
                 (pl.col("Alignment_Method") == alignment_method)
                 & (pl.col("gwas_is_palindromic") == False)
-            )["AF"],
+            )["AF_gnomad"],
             combined_df.filter(
                 (pl.col("Alignment_Method") == alignment_method)
                 & (pl.col("gwas_is_palindromic") == False)
@@ -109,7 +109,7 @@ def plot(
             combined_df.filter(
                 (pl.col("Alignment_Method") == alignment_method)
                 & (pl.col("gwas_is_palindromic") == True)
-            )["AF"],
+            )["AF_gnomad"],
             combined_df.filter(
                 (pl.col("Alignment_Method") == alignment_method)
                 & (pl.col("gwas_is_palindromic"))
@@ -128,13 +128,13 @@ def plot(
 
     # Remove variants that are QC flagged in gnomad
     axes[1, 0].scatter(
-        combined_df.filter(pl.col("AN_Flag") == 0)["AF"],
+        combined_df.filter(pl.col("AN_Flag") == 0)["AF_gnomad"],
         combined_df.filter(pl.col("AN_Flag") == 0)["Aligned_AF"],
         label="AN >= .5(max(AN))",
         s=10,
     )
     axes[1, 0].scatter(
-        combined_df.filter(pl.col("AN_Flag") == 1)["AF"],
+        combined_df.filter(pl.col("AN_Flag") == 1)["AF_gnomad"],
         combined_df.filter(pl.col("AN_Flag") == 1)["Aligned_AF"],
         label="AN < .5(max(AN))",
         s=10,
@@ -231,7 +231,7 @@ def plot(
             combined_df.filter(
                 (pl.col("af_chunks") == chunk)
                 & (pl.col("gwas_is_palindromic") == False)
-            )["AF"],
+            )["AF_gnomad"],
             combined_df.filter(
                 (pl.col("af_chunks") == chunk)
                 & (pl.col("gwas_is_palindromic") == False)
@@ -251,7 +251,7 @@ def plot(
         axes[3, 1].scatter(
             combined_df.filter(
                 (pl.col("af_chunks") == chunk) & (pl.col("gwas_is_palindromic") == True)
-            )["AF"],
+            )["AF_gnomad"],
             combined_df.filter(
                 (pl.col("af_chunks") == chunk) & (pl.col("gwas_is_palindromic") == True)
             )["Aligned_AF"],

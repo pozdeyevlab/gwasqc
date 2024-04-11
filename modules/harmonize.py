@@ -183,7 +183,7 @@ def harmonize(
     )
     # Re-order stacked_pl so that is is easier to read
     reorder = []
-    first = ['CHR', 'POS', 'REF', 'ALT', 'AF', col_map.eaf, 'Aligned_AF', 'Aligned_Beta', 'Alignment_Method']
+    first = ['CHR', 'POS', 'REF', 'ALT', 'AF_gnomad', col_map.eaf, 'Aligned_AF', 'Aligned_Beta', 'Alignment_Method']
     reorder.extend(first)
     [reorder.append(x) for x in stacked_pl.columns if x not in first]
     stacked_pl = stacked_pl.select(reorder)

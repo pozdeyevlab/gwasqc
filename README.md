@@ -120,7 +120,9 @@ snakemake --cores 10 --configfile config.yaml
             * **IMPORTANT**: The AF & Beta become 1 - AF & -1 * BETA
         3. For variants that align BOTH by exact and inverse match, find the absolute difference in allele frequency (AF) between the gnomAD reported AF and the gwas reported AF. The method that procuces the smallest difference in AF is saved as the true match. These counts are saved to the log file. 
    
-    5. Write the aligned, unaligned, and missing position variants to three respective output files
+    5. Write the aligned, unaligned, and missing position variants to three respective output files 
+
+    6. Concatenate all aligned data, calculate outliers based on the mahalanobis distance between the gnomad-af and the gwas-af, and add AN warning flags from gnomad.
 
 3) Per input gwas summary stat create the following plots:
 

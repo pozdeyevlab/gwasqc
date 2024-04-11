@@ -119,7 +119,7 @@ def harmonize(
 
     # Write Abs(AF_study - AF_ref)
     stacked_pl = stacked_pl.with_columns(
-        (abs(pl.col("AF") - pl.col("Aligned_AF"))).alias("ABS_DIF_AF")
+        (abs(pl.col("AF_gnomad") - pl.col("Aligned_AF"))).alias("ABS_DIF_AF")
     )
     return stacked_pl
 
@@ -207,11 +207,11 @@ def handle_palindromic_variants(
         col_map; Class of column names
     """
     exact_pl_subset = exact_pl.with_columns(
-        ABS_DIF_AF=abs((pl.col("AF") - pl.col(col_map.eaf)))
+        ABS_DIF_AF=abs((pl.col("AF_gnomad") - pl.col(col_map.eaf)))
     ).select(col_map.variant_id, "ABS_DIF_AF")
 
     inverse_pl_subset = inverse_pl.with_columns(
-        ABS_DIF_AF=abs((pl.col("AF") - (1 - pl.col(col_map.eaf))))
+        ABS_DIF_AF=abs((pl.col("AF_gnomad") - (1 - pl.col(col_map.eaf))))
     ).select(col_map.variant_id, "ABS_DIF_AF")
 
     joined = (

@@ -73,7 +73,7 @@ def harmonize(
     # Calculate the variants with an abs difference in AF between study and gnomad greater than 0.1
     likely_exact = (
         exact.aligned_and_merged.with_columns(
-            ABS_DIF_AF=abs(pl.col("AF") - pl.col(col_map.eaf))
+            ABS_DIF_AF=abs(pl.col("AF_gnomad") - pl.col(col_map.eaf))
         )
         .filter(pl.col("ABS_DIF_AF") < 0.05)
         .drop("ABS_DIF_AF")
@@ -194,7 +194,7 @@ def harmonize(
 
     # Write Abs(AF_study - AF_ref)
     stacked_pl = stacked_pl.with_columns(
-        (abs(pl.col("AF") - pl.col("Aligned_AF"))).alias("ABS_DIF_AF")
+        (abs(pl.col("AF_gnomad") - pl.col("Aligned_AF"))).alias("ABS_DIF_AF")
     )
     return stacked_pl
 
@@ -302,12 +302,12 @@ def handle_complementary_variants(
         col_map; Class of column names
     """
     exact_pl_subset = exact_pl.with_columns(
-        ABS_DIF_AF=abs((pl.col("AF") - pl.col(col_map.eaf)))
-    ).select(col_map.variant_id, col_map.eaf, "ABS_DIF_AF", "AF", "REF", "ALT")
+        ABS_DIF_AF=abs((pl.col("AF_gnomad") - pl.col(col_map.eaf)))
+    ).select(col_map.variant_id, col_map.eaf, "ABS_DIF_AF", "AF_gnomad", "REF", "ALT")
 
     inverse_pl_subset = inverse_pl.with_columns(
-        ABS_DIF_AF=abs((pl.col("AF") - (1 - pl.col(col_map.eaf))))
-    ).select(col_map.variant_id, col_map.eaf, "ABS_DIF_AF", "AF", "REF", "ALT")
+        ABS_DIF_AF=abs((pl.col("AF_gnomad") - (1 - pl.col(col_map.eaf))))
+    ).select(col_map.variant_id, col_map.eaf, "ABS_DIF_AF", "AF_gnomad", "REF", "ALT")
 
     joined = (
         exact_pl_subset.join(inverse_pl_subset, on=col_map.variant_id, how="inner")
