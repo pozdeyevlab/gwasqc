@@ -71,13 +71,13 @@ def harmonize(
         method="exact_match",
     )
     # Calculate the variants with an abs difference in AF between study and gnomad greater than 0.1
-    likely_exact = (
-        exact.aligned_and_merged.with_columns(
-            ABS_DIF_AF=abs(pl.col("AF_gnomad") - pl.col(col_map.eaf))
-        )
-        .filter(pl.col("ABS_DIF_AF") < 0.05)
-        .drop("ABS_DIF_AF")
-    )
+    #likely_exact = (
+    #    exact.aligned_and_merged.with_columns(
+    #        ABS_DIF_AF=abs(pl.col("AF_gnomad") - pl.col(col_map.eaf))
+    #    )
+    #    .filter(pl.col("ABS_DIF_AF") < 0.05)
+    #    .drop("ABS_DIF_AF")
+    #)
 
     # Inverse (ref=alt & alt=ref)
     gwas_pl = _make_id_column(
@@ -85,7 +85,7 @@ def harmonize(
         col_map=col_map,
         first_allele=col_map.effect_allele,
         second_allele=col_map.non_effect_allele,
-        polars_df=gwas_pl.join(likely_exact, on=col_map.variant_id, how="anti"),
+        polars_df=gwas_pl.join(exact.aligned_and_merged, on=col_map.variant_id, how="anti"),
     )
 
     inverse: AlignmentResults = align_alleles(
@@ -275,7 +275,7 @@ def align_alleles(
         # Filter gwas data for only aligned variants
         aligned_df: pl.DataFrame = gwas_df.filter(pl.col(id_column).is_in(aligned_set))
         unaligned_df: pl.DataFrame = gwas_df.filter(
-            ~pl.col(id_column).is_in(aligned_set)
+            ~(pl.col(id_column).is_in(aligned_set))
         )
         aligned_df = aligned_df.with_columns(pl.lit(method).alias("Alignment_Method"))
 
@@ -325,14 +325,16 @@ def handle_complementary_variants(
     # Remove variants from exact match that are more likely to be an inverse match
     exact_pl = exact_pl.filter(
         ~(pl.col(col_map.variant_id).is_in(joined[col_map.variant_id]))
-    )
+    ).with_columns(test=pl.col('CHR_gnomad').cast(str)+':'+pl.col('POS_gnomad').cast(str)+':'+pl.col('REF_gnomad')+':'+pl.col('ALT_gnomad'))
 
     # Propery format inverse.aligned_and_merged
     inverse_pl = inverse_pl.filter(
         (~(pl.col(col_map.variant_id).is_in(exact_pl[col_map.variant_id])))
         | (pl.col(col_map.variant_id).is_in(joined[col_map.variant_id]))
-    )
+    ).with_columns(test=pl.col('CHR_gnomad').cast(str)+':'+pl.col('POS_gnomad').cast(str)+':'+pl.col('REF_gnomad')+':'+pl.col('ALT_gnomad'))
 
+    # Handle Potential Duplicates
+    print(len(set(inverse_pl['test']) & set(exact_pl['test'])))
     results = namedtuple("results", ["exact", "inverse"])
     return results(exact_pl, inverse_pl)
 

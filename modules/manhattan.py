@@ -112,6 +112,8 @@ def _make_plot(
         df_filtered = df
 
     # Must convert to pandas for compatability with qqman
+    df_filtered = df_filtered.sort(pl.col('CHR_gnomad').cast(int))
+    print(df_filtered)
     pandas_df = df_filtered.to_pandas()
 
     # Calculate chisquare
@@ -132,6 +134,8 @@ def _make_plot(
 
     # Create plots
     if df.shape[0] > 0:
+        pandas_df = pandas_df.sort_values(by=int(['CHR_gnomad']))
+        print(pandas_df)
         qqman.manhattan(
             pandas_df,
             ax=axes[row, col],

@@ -352,7 +352,7 @@ def read_gwas(
             separator=sep,
             null_values=["NA"],
             dtypes={column_map.chrom: str, column_map.pos: pl.Float64},
-        ).filter(pl.col(column_map.chrom).str.replace("chr", "") == str(chromosome))
+        ).filter(pl.col(column_map.chrom).str.replace("chr", "") == str(chromosome)).with_columns(pl.col(column_map.variant_id).str.replace_all('_', ':').alias(column_map.variant_id))
 
     else:
         gwas = (
@@ -363,9 +363,10 @@ def read_gwas(
                 dtypes={column_map.chrom: str, column_map.pos: pl.Float64},
             )
             .filter(pl.col(column_map.chrom).str.replace("chr", "") == str(chromosome))
+            .with_columns(pl.col(column_map.variant_id).str.replace_all('_', ':').alias(column_map.variant_id))
             .collect()
         )
-
+        
     return gwas.with_columns(
         pl.col(column_map.pos).cast(pl.Int64()).alias(column_map.pos)
     )

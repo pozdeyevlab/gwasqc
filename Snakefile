@@ -93,7 +93,8 @@ map_df: pd.DataFrame = pd.read_csv(map_file, sep='\t')
 for index, row in map_df.iterrows():
     unique_id = f"{row['BIOBANK']}_{row['PHENOTYPE']}_{row['SEX']}_{row['ANCESTRY']}"
     #chroms = find_chromosomes(row['PATH'], row['CHROM'], row['GWAS_SOFTWARE'])
-    chroms = [22]
+    chroms = list(range(1,23))
+    #chroms = [2]
     combined[unique_id] = Combine(aligned_files = [f"{output_tsv}/{unique_id}/{chrom}_{unique_id}_aligned_to_gnomad.tsv" for chrom in chroms],
                             pval_col = row['PVAL'],
                             pos_col= row["POS"],
@@ -180,7 +181,7 @@ rule all:
     input:
         [f'{output_tsv}/{value.biobank_id}/{key}_aligned_to_gnomad.tsv' for key, value in phenotypes.items()],
         set([f'{output_tsv}/{value.biobank_id}/{value.biobank_id}_aligned_results.tsv' for value in phenotypes.values()]),
-        set([f'{output_plots}/{value.biobank_id}/{value.biobank_id}_scatter.png' for value in phenotypes.values()]),
+        #set([f'{output_plots}/{value.biobank_id}/{value.biobank_id}_scatter.png' for value in phenotypes.values()]),
         #set([f'{output_plots}/{value.biobank_id}/{value.biobank_id}_manhattan.png' for value in phenotypes.values()]) 
 
 

@@ -29,12 +29,19 @@ def combine(
     """
     # Read all files into a single polars DF and add gnomad glag
     print(f"Files used:\n{list(file_paths)}")
-    combined_pl = _combine_files(file_paths, gnomad_flag_dir)
 
+    # Add option to handle AoU missing frequencies
+    combined_pl = _combine_files(file_paths, gnomad_flag_dir)
+    missing_count = combined_pl.filter(pl.col('Aligned_AF').is_null()).shape[0]
+    print(f'There are {missing_count}/{combined_pl.shape[0]} variants are missing AF from raw summary stat')
+    combined_pl = combined_pl.with_columns(pl.when(pl.col('Aligned_AF').is_null()).then(pl.col('AF_gnomad')).otherwise(pl.col('Aligned_AF')).alias('Aligned_AF'))
+
+    print(combined_pl)
     # Calculate outliers with mahalobis distances
     outlier_pl = mahalanobis.calculate(
         aligned_pl=combined_pl.select(["STUDY_ID","Aligned_AF", "AF_gnomad"])
     )
+
     outlier_pl = pl.concat([outlier_pl, combined_pl], how='align')
     print(outlier_pl.columns)
     print(
@@ -56,12 +63,29 @@ def _combine_files(files, gnomad_flag_dir):
             gnomad_flag_dir=gnomad_flag_dir, chrom=chrom
         )
         df = pl.read_csv(file, separator="\t", dtypes={"CHR_gnomad": str})
-        print(df)
         # Add low AN flag to df
         df = _add_an_flag(study_df=df, gnomad_df=blacklist_df)
         dfs.append(df)
-    concat_df = pl.concat(dfs)
+    # Align column before concat
+    columns = []
+    for df in dfs:
+        df_cols = df.columns
+        [columns.append(c) for c in df_cols]
+    all_columns = set(columns)
+    print(f'\nAll Columns: {all_columns}')
+    fixed_dfs = []
+    for df in dfs:
+        df_col = df.columns
+        cols_to_add = all_columns.difference(set(df_col))
+        if len(cols_to_add) > 0:
+            for col in list(cols_to_add):
+                df = df.with_columns((pl.lit(None).cast(str)).alias(col))
+        df = df.drop(['#chrom', 'chromosome', 'CHR', 'CHROM'])
+        fixed_dfs.append(df)
+    concat_df = pl.concat(fixed_dfs, how = 'align')
+    print(concat_df)
     return concat_df
+
 
 
 def _get_blacklist_variants(gnomad_flag_dir: Path, chrom: str) -> pl.DataFrame:

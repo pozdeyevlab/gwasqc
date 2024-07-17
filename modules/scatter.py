@@ -48,6 +48,7 @@ def plot(
 
     # Filter aligned variants for all possible qc values
     combined_df = combined_df.filter((pl.col("FILTER") == "PASS"))
+    print(combined_df)
 
     # Prepare data for palindromic and filter scatterplots
     ref_eaf_non_palindromic = combined_df.filter(
