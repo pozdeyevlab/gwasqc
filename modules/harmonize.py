@@ -18,14 +18,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, Union
 
-import align_non_palindromic_variants
-import align_palindromic_variants
 import attr
 import defopt
-import filter_gwas
-import get_gnomad_ref
-import mahalanobis
 import polars as pl
+
+from modules import filter_gwas, get_gnomad_ref, align_non_palindromic_variants, align_palindromic_variants
 
 # pylint: disable=C0301 # line too long
 # pylint: disable=R0914 # too many local variables
@@ -179,7 +176,17 @@ def harmonize(
     # Re-order stacked_pl so that is is easier to read
     reorder = []
 
-    first = ['CHR_gnomad', 'POS_gnomad', 'REF_gnomad', 'ALT_gnomad', 'AF_gnomad', col_map.eaf, 'Aligned_AF', 'Aligned_Beta', 'Alignment_Method']
+    first = [
+        "CHR_gnomad",
+        "POS_gnomad",
+        "REF_gnomad",
+        "ALT_gnomad",
+        "AF_gnomad",
+        col_map.eaf,
+        "Aligned_AF",
+        "Aligned_Beta",
+        "Alignment_Method",
+    ]
 
     reorder.extend(first)
     [reorder.append(x) for x in stacked_pl.columns if x not in first]

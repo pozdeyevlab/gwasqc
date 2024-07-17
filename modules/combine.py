@@ -3,9 +3,9 @@ from pathlib import Path
 from typing import List
 
 import defopt
-import mahalanobis
-import matplotlib.pyplot as plt
 import polars as pl
+
+from modules import mahalanobis
 
 # pylint: disable=C0301 # line too long
 # pylint: disable=R0914 # Too many local variables
@@ -32,17 +32,24 @@ def combine(
 
     # Add option to handle AoU missing frequencies
     combined_pl = _combine_files(file_paths, gnomad_flag_dir)
-    missing_count = combined_pl.filter(pl.col('Aligned_AF').is_null()).shape[0]
-    print(f'There are {missing_count}/{combined_pl.shape[0]} variants are missing AF from raw summary stat')
-    combined_pl = combined_pl.with_columns(pl.when(pl.col('Aligned_AF').is_null()).then(pl.col('AF_gnomad')).otherwise(pl.col('Aligned_AF')).alias('Aligned_AF'))
+    missing_count = combined_pl.filter(pl.col("Aligned_AF").is_null()).shape[0]
+    print(
+        f"There are {missing_count}/{combined_pl.shape[0]} variants are missing AF from raw summary stat"
+    )
+    combined_pl = combined_pl.with_columns(
+        pl.when(pl.col("Aligned_AF").is_null())
+        .then(pl.col("AF_gnomad"))
+        .otherwise(pl.col("Aligned_AF"))
+        .alias("Aligned_AF")
+    )
 
     print(combined_pl)
     # Calculate outliers with mahalobis distances
     outlier_pl = mahalanobis.calculate(
-        aligned_pl=combined_pl.select(["STUDY_ID","Aligned_AF", "AF_gnomad"])
+        aligned_pl=combined_pl.select(["STUDY_ID", "Aligned_AF", "AF_gnomad"])
     )
 
-    outlier_pl = pl.concat([outlier_pl, combined_pl], how='align')
+    outlier_pl = pl.concat([outlier_pl, combined_pl], how="align")
     print(outlier_pl.columns)
     print(
         f'\nMahalanobis Summary:\nTotal aligned varinats with Mahalanobis distance greater than three standard deviations from the mean: {outlier_pl.filter(outlier_stdev="Yes").shape[0]}/{outlier_pl.shape[0]}'
@@ -52,7 +59,7 @@ def combine(
     )
 
     # Write output
-    outlier_pl.write_csv(output_file, include_header=True, separator='\t')
+    outlier_pl.write_csv(output_file, include_header=True, separator="\t")
 
 
 def _combine_files(files, gnomad_flag_dir):
@@ -70,9 +77,10 @@ def _combine_files(files, gnomad_flag_dir):
     columns = []
     for df in dfs:
         df_cols = df.columns
-        [columns.append(c) for c in df_cols]
+        for c in df_cols:
+            columns.append(c)
     all_columns = set(columns)
-    print(f'\nAll Columns: {all_columns}')
+    print(f"\nAll Columns: {all_columns}")
     fixed_dfs = []
     for df in dfs:
         df_col = df.columns
@@ -80,12 +88,11 @@ def _combine_files(files, gnomad_flag_dir):
         if len(cols_to_add) > 0:
             for col in list(cols_to_add):
                 df = df.with_columns((pl.lit(None).cast(str)).alias(col))
-        df = df.drop(['#chrom', 'chromosome', 'CHR', 'CHROM'])
+        df = df.drop(["#chrom", "chromosome", "CHR", "CHROM"])
         fixed_dfs.append(df)
-    concat_df = pl.concat(fixed_dfs, how = 'align')
+    concat_df = pl.concat(fixed_dfs, how="align")
     print(concat_df)
     return concat_df
-
 
 
 def _get_blacklist_variants(gnomad_flag_dir: Path, chrom: str) -> pl.DataFrame:
@@ -100,8 +107,22 @@ def _get_blacklist_variants(gnomad_flag_dir: Path, chrom: str) -> pl.DataFrame:
 
 def _add_an_flag(study_df: pl.DataFrame, gnomad_df: pl.DataFrame) -> pl.DataFrame:
     # Remove chr from chrom col if present
-    gnomad_df = _make_id_column(new_column_name="GNOMAD_ID", polars_df=gnomad_df, CHR="CHR", POS="POS", REF="REF", ALT="ALT")
-    study_df = _make_id_column(new_column_name="STUDY_ID", polars_df=study_df, CHR="CHR_gnomad", POS="POS_gnomad", REF="REF_gnomad", ALT="ALT_gnomad")
+    gnomad_df = _make_id_column(
+        new_column_name="GNOMAD_ID",
+        polars_df=gnomad_df,
+        CHR="CHR",
+        POS="POS",
+        REF="REF",
+        ALT="ALT",
+    )
+    study_df = _make_id_column(
+        new_column_name="STUDY_ID",
+        polars_df=study_df,
+        CHR="CHR_gnomad",
+        POS="POS_gnomad",
+        REF="REF_gnomad",
+        ALT="ALT_gnomad",
+    )
 
     study_df = study_df.with_columns(
         pl.when((pl.col("STUDY_ID").is_in(list(set(gnomad_df["GNOMAD_ID"])))))
@@ -119,7 +140,7 @@ def _make_id_column(
     CHR: str,
     POS: str,
     REF: str,
-    ALT: str
+    ALT: str,
 ) -> pl.DataFrame:
     """
     Helper function to create id column

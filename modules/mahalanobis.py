@@ -29,7 +29,7 @@ def calculate(
     # Calculate Mahalanobis distances for all rows
     mahalanobis_distances = []
     for row in data_np:
-        #a = abs(row[0] - row[1])
+        # a = abs(row[0] - row[1])
         gwas = np.array([row[0], row[0]])
         gnomad = np.array([row[1], row[1]])
 

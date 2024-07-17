@@ -39,7 +39,7 @@ def plot(
         "outlier_pval",
         "outlier_stdev",
         "mahalanobis",
-        "GNOMAD_AN_Flag"
+        "GNOMAD_AN_Flag",
     ]
 
     # Read specific columns from all files into a single polars DF
@@ -49,14 +49,6 @@ def plot(
     # Filter aligned variants for all possible qc values
     combined_df = combined_df.filter((pl.col("FILTER") == "PASS"))
     print(combined_df)
-
-    # Prepare data for palindromic and filter scatterplots
-    ref_eaf_non_palindromic = combined_df.filter(
-        pl.col("gwas_is_palindromic") == False
-    )["AF_gnomad"]
-    ref_eaf_palindromic = combined_df.filter(pl.col("gwas_is_palindromic") == True)[
-        "AF_gnomad"
-    ]
 
     # Set up scatterplot figure
     figure, axes = plt.subplots(nrows=3, ncols=2, figsize=(40, 40))
@@ -68,7 +60,9 @@ def plot(
     for alignment_method in alignment_methods:
         # Scatterplots
         axes[0, 0].scatter(
-            combined_df.filter((pl.col("Alignment_Method") == alignment_method))["AF_gnomad"],
+            combined_df.filter((pl.col("Alignment_Method") == alignment_method))[
+                "AF_gnomad"
+            ],
             combined_df.filter((pl.col("Alignment_Method") == alignment_method))[
                 "Aligned_AF"
             ],
@@ -142,8 +136,12 @@ def plot(
 
     # Mahalanobis & An Flags
     axes[2, 0].scatter(
-        combined_df.filter((pl.col("outlier_stdev") == out) & (pl.col("GNOMAD_AN_Flag") == 0))["AF_gnomad"],
-        combined_df.filter((pl.col("outlier_stdev") == out) & (pl.col("GNOMAD_AN_Flag") == 0))["Aligned_AF"],
+        combined_df.filter(
+            (pl.col("outlier_stdev") == out) & (pl.col("GNOMAD_AN_Flag") == 0)
+        )["AF_gnomad"],
+        combined_df.filter(
+            (pl.col("outlier_stdev") == out) & (pl.col("GNOMAD_AN_Flag") == 0)
+        )["Aligned_AF"],
         label=out,
         s=10,
     )

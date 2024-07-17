@@ -37,14 +37,12 @@ def plot(
         "POS_gnomad",
         "REF_gnomad",
         "ALT_gnomad",
-        "GNOMAD_AN_Flag"
+        "GNOMAD_AN_Flag",
     ]
 
     # Read specific columns from all files into a single polars DF
     print(f"File used: {file_path}")
-    combined_df = _read_specific_columns(
-        file_path, columns_to_read, pval_col
-    )
+    combined_df = _read_specific_columns(file_path, columns_to_read, pval_col)
 
     # Manhattan plots for common and rare variants & qqplots
     figure, axes = plt.subplots(nrows=2, ncols=3, figsize=(50, 20))
@@ -100,9 +98,9 @@ def _make_plot(
     pval_col: str,
     maf_cutoff: str,
 ) -> None:
-    df = df.with_columns((pl.col("CHR_gnomad").str.replace("chr", "")).alias("CHR_gnomad")).sort(
-        "CHR_gnomad", "POS_gnomad"
-    )
+    df = df.with_columns(
+        (pl.col("CHR_gnomad").str.replace("chr", "")).alias("CHR_gnomad")
+    ).sort("CHR_gnomad", "POS_gnomad")
 
     if maf_cutoff.lower() == "common":
         df_filtered = df.filter(pl.col("Aligned_AF") > 0.05)
@@ -112,7 +110,7 @@ def _make_plot(
         df_filtered = df
 
     # Must convert to pandas for compatability with qqman
-    df_filtered = df_filtered.sort(pl.col('CHR_gnomad').cast(int))
+    df_filtered = df_filtered.sort(pl.col("CHR_gnomad").cast(int))
     print(df_filtered)
     pandas_df = df_filtered.to_pandas()
 
@@ -134,7 +132,7 @@ def _make_plot(
 
     # Create plots
     if df.shape[0] > 0:
-        pandas_df = pandas_df.sort_values(by=int(['CHR_gnomad']))
+        pandas_df = pandas_df.sort_values(by=int(["CHR_gnomad"]))
         print(pandas_df)
         qqman.manhattan(
             pandas_df,
@@ -166,9 +164,7 @@ def _read_specific_columns(file, columns, pval_col):
     df = df.filter(pl.col("GNOMAD_AN_Flag") == 0)
 
     if pval_col == "LOG10P":
-        df = df.with_columns(
-            (10 ** (-1 * pl.col(pval_col))).alias(pval_col)
-        )
+        df = df.with_columns((10 ** (-1 * pl.col(pval_col))).alias(pval_col))
 
     return df
 
