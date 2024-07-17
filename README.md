@@ -79,6 +79,7 @@ Not all fields are necessary at a minimum 'BioBank', 'PHENOTYPE', 'SEX', 'ANCEST
 |Output Type|Path|
 |-----------|----|
 |Aligned variants|`<output_path>/results/<biobank>_<phenotype>_<sex>_<ancestry>_aligned_to_gnomad.tsv`|
+|Combined results|`<output_path>/results/<biobank>_<phenotype>_<sex>_<ancestry>_aligned_results.tsv`|
 |Un-Aligned variants|`<output_path>/results/<biobank>_<phenotype>_<sex>_<ancestry>_not_aligned_in_gnomad.tsv`|
 |Variants without a matching reference position|`<output_path>/results/<biobank>_<phenotype>_<sex>_<ancestry>_no_position_in_gnomad.tsv`|
 |Un-Usable variants|`<output_path>/results/<biobank>_<phenotype>_<sex>_<ancestry>_invalid_variants.tsv`<br/>If alternate allele is invalid ie `CN0` then those variants are removed from analysis|
