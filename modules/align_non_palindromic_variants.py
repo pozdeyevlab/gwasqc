@@ -22,7 +22,7 @@ import defopt
 import numpy as np
 import polars as pl
 
-from modules import filter_gwas
+import filter_gwas
 
 # pylint: disable=C0301
 # pylint: disable=R0914 # too many local variables
