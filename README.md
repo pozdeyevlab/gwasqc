@@ -6,8 +6,8 @@ A custom pipeline for harmonizing REGENIE/SAIGE summary stats from a variety of 
 ### Environment & Dependency Set Up
 If the steps below do not work please contact samantha.l.white@cuanschutz.edu for assistance. 
 ```bash
-git clone https://github.com/pozdeyevlab/gwas-qc.git
-cd gwas-qc
+git clone https://github.com/pozdeyevlab/gwasqc.git
+cd gwasqc
 conda env create -f environment.yml
 conda activate gwas_qc
 poetry install
