@@ -5,3 +5,4 @@ channels:
 dependencies:
   - poetry=1.5.1
   - python=3.9.1
+  - conda-forge::defopt=6.4.0
